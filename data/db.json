@@ -1,0 +1,1228 @@
+{
+  "branches": [
+    {
+      "id": "br-01",
+      "code": "BR-01",
+      "nameAr": "فرع الرياض الرئيسي (السليمانية)",
+      "nameEn": "Riyadh Main Branch (Sulaymaniyah)",
+      "cityAr": "الرياض",
+      "cityEn": "Riyadh",
+      "addressAr": "شارع الملك عبد العزيز، حي السليمانية",
+      "addressEn": "King Abdulaziz Road, As Sulaymaniyah",
+      "phone": "+966 11 456 7890",
+      "taxNumber": "300123456700003",
+      "defaultWarehouseId": "wh-01"
+    },
+    {
+      "id": "br-02",
+      "code": "BR-02",
+      "nameAr": "فرع الخبر - المنطقة الشرقية",
+      "nameEn": "Al-Khobar Branch (Eastern Region)",
+      "cityAr": "الخبر",
+      "cityEn": "Al-Khobar",
+      "addressAr": "طريق الأمير فيصل بن فهد، الحزام الذهبي",
+      "addressEn": "Prince Faisal Bin Fahd Rd, Al Hizam Al Thahabi",
+      "phone": "+966 13 889 1234",
+      "taxNumber": "300123456700003",
+      "defaultWarehouseId": "wh-02"
+    },
+    {
+      "id": "br-03",
+      "code": "BR-03",
+      "nameAr": "فرع جدة - المنطقة الغربية",
+      "nameEn": "Jeddah Branch (Western Region)",
+      "cityAr": "جدة",
+      "cityEn": "Jeddah",
+      "addressAr": "طريق المدينة المنورة، حي الحمراء",
+      "addressEn": "Madinah Road, Al Hamra District",
+      "phone": "+966 12 667 8901",
+      "taxNumber": "300123456700003",
+      "defaultWarehouseId": "wh-03"
+    }
+  ],
+  "warehouses": [
+    {
+      "id": "wh-01",
+      "branchId": "br-01",
+      "code": "WH-01",
+      "nameAr": "المستودع الرئيسي - الرياض",
+      "nameEn": "Central Warehouse - Riyadh"
+    },
+    {
+      "id": "wh-02",
+      "branchId": "br-02",
+      "code": "WH-02",
+      "nameAr": "مستودع فرع الخبر",
+      "nameEn": "Khobar Branch Stock"
+    },
+    {
+      "id": "wh-03",
+      "branchId": "br-03",
+      "code": "WH-03",
+      "nameAr": "مستودع فرع جدة",
+      "nameEn": "Jeddah Branch Stock"
+    }
+  ],
+  "users": [
+    {
+      "id": "usr-01",
+      "username": "admin",
+      "nameAr": "د. طارق العتيبي",
+      "nameEn": "Dr. Tariq Al-Otaibi",
+      "role": "super_admin",
+      "branchIds": [
+        "br-01",
+        "br-02",
+        "br-03"
+      ],
+      "currentBranchId": "br-01"
+    },
+    {
+      "id": "usr-02",
+      "username": "reem_mgr",
+      "nameAr": "أ. ريم الغامدي",
+      "nameEn": "Reem Al-Ghamdi",
+      "role": "branch_manager",
+      "branchIds": [
+        "br-01"
+      ],
+      "currentBranchId": "br-01"
+    },
+    {
+      "id": "usr-03",
+      "username": "faisal_pos",
+      "nameAr": "فيصل الحربي (كاشير)",
+      "nameEn": "Faisal Al-Harbi (Cashier)",
+      "role": "cashier",
+      "branchIds": [
+        "br-01"
+      ],
+      "currentBranchId": "br-01"
+    },
+    {
+      "id": "usr-04",
+      "username": "dr_huda",
+      "nameAr": "د. هدى الشهري (سمعيات)",
+      "nameEn": "Dr. Huda Al-Shehri (Audiologist)",
+      "role": "audiologist",
+      "branchIds": [
+        "br-01",
+        "br-02"
+      ],
+      "currentBranchId": "br-01"
+    }
+  ],
+  "doctors": [
+    {
+      "id": "doc-01",
+      "nameAr": "د. أحمد المنصور",
+      "nameEn": "Dr. Ahmed Al-Mansoor",
+      "specialtyAr": "استشاري أنف وأذن وحنجرة وجراحة قاع الجمجمة",
+      "specialtyEn": "Consultant ENT & Skull Base Surgery",
+      "phone": "+966 50 111 2233",
+      "hospitalId": "hosp-02",
+      "commissionPercent": 10
+    },
+    {
+      "id": "doc-02",
+      "nameAr": "د. سارة الحسيني",
+      "nameEn": "Dr. Sara Al-Husseini",
+      "specialtyAr": "استشارية طب السمع والاتزان والتأهيل السمعي",
+      "specialtyEn": "Consultant Audiovestibular Medicine",
+      "phone": "+966 55 222 3344",
+      "hospitalId": "hosp-01",
+      "commissionPercent": 12
+    },
+    {
+      "id": "doc-03",
+      "nameAr": "د. خالد البيشي",
+      "nameEn": "Dr. Khalid Al-Bishi",
+      "specialtyAr": "أخصائي أول أنف وأذن وحنجرة",
+      "specialtyEn": "Senior Specialist ENT",
+      "phone": "+966 54 333 4455",
+      "hospitalId": "hosp-03",
+      "commissionPercent": 8
+    }
+  ],
+  "hospitals": [
+    {
+      "id": "hosp-01",
+      "code": "KFSH",
+      "nameAr": "مستشفى الملك فيصل التخصصي ومركز الأبحاث",
+      "nameEn": "King Faisal Specialist Hospital & Research Centre",
+      "cityAr": "الرياض",
+      "cityEn": "Riyadh",
+      "phone": "0114647272"
+    },
+    {
+      "id": "hosp-02",
+      "code": "HMG",
+      "nameAr": "مجموعة الدكتور سليمان الحبيب الطبية",
+      "nameEn": "Dr. Sulaiman Al-Habib Medical Group",
+      "cityAr": "الرياض",
+      "cityEn": "Riyadh",
+      "phone": "0114909999"
+    },
+    {
+      "id": "hosp-03",
+      "code": "SFH",
+      "nameAr": "مستشفى قوى الأمن بالرياض",
+      "nameEn": "Security Forces Hospital",
+      "cityAr": "الرياض",
+      "cityEn": "Riyadh",
+      "phone": "0118024444"
+    }
+  ],
+  "insuranceCompanies": [
+    {
+      "id": "ins-01",
+      "code": "BUPA",
+      "nameAr": "شركة بوبا العربية للتأمين التعاوني",
+      "nameEn": "Bupa Arabia Cooperative Insurance",
+      "phone": "8002440307",
+      "defaultCoveragePercent": 80,
+      "requiresPreApproval": true
+    },
+    {
+      "id": "ins-02",
+      "code": "TAWUNIYA",
+      "nameAr": "شركة التعاونية للتأمين",
+      "nameEn": "Tawuniya Insurance Company",
+      "phone": "920019990",
+      "defaultCoveragePercent": 75,
+      "requiresPreApproval": true
+    },
+    {
+      "id": "ins-03",
+      "code": "MEDGULF",
+      "nameAr": "شركة المتوسط والخليج للتأمين (ميدغلف)",
+      "nameEn": "Medgulf Insurance",
+      "phone": "8004414442",
+      "defaultCoveragePercent": 70,
+      "requiresPreApproval": false
+    }
+  ],
+  "items": [
+    {
+      "id": "item-ha-01",
+      "sku": "HA-OT-M1",
+      "barcode": "628100100101",
+      "nameAr": "سماعة أوتيكون مور 1 قابلة للشحن (Oticon More 1 miniRITE R)",
+      "nameEn": "Oticon More 1 miniRITE R Rechargeable Hearing Aid",
+      "category": "hearing_aids",
+      "brand": "Oticon",
+      "model": "More 1 miniRITE R",
+      "unit": "قطعة",
+      "costPrice": 9500,
+      "salePrice": 14500,
+      "taxRate": 0.15,
+      "hasSerials": true,
+      "warrantyMonths": 24,
+      "minStockLevel": 3,
+      "stockByWarehouse": {
+        "wh-01": 7,
+        "wh-02": 3,
+        "wh-03": 2
+      }
+    },
+    {
+      "id": "item-ha-02",
+      "sku": "HA-PH-L90",
+      "barcode": "628100100102",
+      "nameAr": "سماعة فوناك أوديو لوميتي 90 (Phonak Audeo Lumity L90-R)",
+      "nameEn": "Phonak Audeo Lumity L90-R Hearing Aid",
+      "category": "hearing_aids",
+      "brand": "Phonak",
+      "model": "Lumity L90-R",
+      "unit": "قطعة",
+      "costPrice": 10200,
+      "salePrice": 16000,
+      "taxRate": 0.15,
+      "hasSerials": true,
+      "warrantyMonths": 36,
+      "minStockLevel": 2,
+      "stockByWarehouse": {
+        "wh-01": 5,
+        "wh-02": 2,
+        "wh-03": 1
+      }
+    },
+    {
+      "id": "item-ha-03",
+      "sku": "HA-SG-7AX",
+      "barcode": "628100100103",
+      "nameAr": "سماعة سيجنيا بيور تشارج أند جو 7AX (Signia Pure Charge&Go 7AX)",
+      "nameEn": "Signia Pure Charge&Go 7AX Hearing Aid",
+      "category": "hearing_aids",
+      "brand": "Signia",
+      "model": "Pure Charge&Go 7AX",
+      "unit": "قطعة",
+      "costPrice": 8800,
+      "salePrice": 13800,
+      "taxRate": 0.15,
+      "hasSerials": true,
+      "warrantyMonths": 24,
+      "minStockLevel": 3,
+      "stockByWarehouse": {
+        "wh-01": 6,
+        "wh-02": 4,
+        "wh-03": 2
+      }
+    },
+    {
+      "id": "item-ha-04",
+      "sku": "HA-WD-440",
+      "barcode": "628100100104",
+      "nameAr": "سماعة وايدكس مومنت شير 440 (Widex Moment Sheer 440)",
+      "nameEn": "Widex Moment Sheer s-RIC 440 Hearing Aid",
+      "category": "hearing_aids",
+      "brand": "Widex",
+      "model": "Moment Sheer 440",
+      "unit": "قطعة",
+      "costPrice": 9800,
+      "salePrice": 15200,
+      "taxRate": 0.15,
+      "hasSerials": true,
+      "warrantyMonths": 24,
+      "minStockLevel": 2,
+      "stockByWarehouse": {
+        "wh-01": 4,
+        "wh-02": 1,
+        "wh-03": 1
+      }
+    },
+    {
+      "id": "item-em-01",
+      "sku": "EM-ACRYLIC",
+      "barcode": "628200200101",
+      "nameAr": "قالب أذن أكريليك صلب مخصص (Hard Acrylic Earmold)",
+      "nameEn": "Custom Hard Acrylic Earmold with Vent",
+      "category": "earmolds",
+      "brand": "Custom Lab",
+      "model": "Hard Acrylic",
+      "unit": "قالب",
+      "costPrice": 180,
+      "salePrice": 450,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 6,
+      "minStockLevel": 10,
+      "stockByWarehouse": {
+        "wh-01": 999,
+        "wh-02": 999,
+        "wh-03": 999
+      }
+    },
+    {
+      "id": "item-em-02",
+      "sku": "EM-SILICONE",
+      "barcode": "628200200102",
+      "nameAr": "قالب أذن سيليكون ناعم مخصص (Soft Silicone Earmold)",
+      "nameEn": "Custom Soft Silicone Earmold",
+      "category": "earmolds",
+      "brand": "Custom Lab",
+      "model": "Soft Silicone",
+      "unit": "قالب",
+      "costPrice": 220,
+      "salePrice": 550,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 6,
+      "minStockLevel": 10,
+      "stockByWarehouse": {
+        "wh-01": 999,
+        "wh-02": 999,
+        "wh-03": 999
+      }
+    },
+    {
+      "id": "item-em-03",
+      "sku": "EM-MICROCIC",
+      "barcode": "628200200103",
+      "nameAr": "هيكل مخصص داخل القناة ميكرو (Custom Micro-CIC Shell)",
+      "nameEn": "Custom Micro-CIC Modular Shell",
+      "category": "earmolds",
+      "brand": "Custom Lab",
+      "model": "Micro-CIC Shell",
+      "unit": "قطعة",
+      "costPrice": 350,
+      "salePrice": 850,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 12,
+      "minStockLevel": 5,
+      "stockByWarehouse": {
+        "wh-01": 999,
+        "wh-02": 999,
+        "wh-03": 999
+      }
+    },
+    {
+      "id": "item-bat-312",
+      "sku": "BAT-312-RAY",
+      "barcode": "628300300312",
+      "nameAr": "بطاريات ريوفاك حجم 312 بنية (كرتون 6 حبات)",
+      "nameEn": "Rayovac Extra Advanced Size 312 Hearing Aid Batteries (Pack of 6)",
+      "category": "batteries",
+      "brand": "Rayovac",
+      "model": "Size 312 Brown",
+      "unit": "كرتون",
+      "costPrice": 18,
+      "salePrice": 45,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 0,
+      "minStockLevel": 25,
+      "stockByWarehouse": {
+        "wh-01": 140,
+        "wh-02": 85,
+        "wh-03": 60
+      }
+    },
+    {
+      "id": "item-bat-10",
+      "sku": "BAT-10-RAY",
+      "barcode": "628300300010",
+      "nameAr": "بطاريات ريوفاك حجم 10 صفراء (كرتون 6 حبات)",
+      "nameEn": "Rayovac Extra Advanced Size 10 Batteries (Pack of 6)",
+      "category": "batteries",
+      "brand": "Rayovac",
+      "model": "Size 10 Yellow",
+      "unit": "كرتون",
+      "costPrice": 18,
+      "salePrice": 45,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 0,
+      "minStockLevel": 20,
+      "stockByWarehouse": {
+        "wh-01": 90,
+        "wh-02": 45,
+        "wh-03": 30
+      }
+    },
+    {
+      "id": "item-bat-13",
+      "sku": "BAT-13-RAY",
+      "barcode": "628300300013",
+      "nameAr": "بطاريات ريوفاك حجم 13 برتقالية (كرتون 6 حبات)",
+      "nameEn": "Rayovac Extra Advanced Size 13 Batteries (Pack of 6)",
+      "category": "batteries",
+      "brand": "Rayovac",
+      "model": "Size 13 Orange",
+      "unit": "كرتون",
+      "costPrice": 18,
+      "salePrice": 45,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 0,
+      "minStockLevel": 15,
+      "stockByWarehouse": {
+        "wh-01": 70,
+        "wh-02": 35,
+        "wh-03": 25
+      }
+    },
+    {
+      "id": "item-bat-675",
+      "sku": "BAT-675-RAY",
+      "barcode": "628300300675",
+      "nameAr": "بطاريات ريوفاك حجم 675 زرقاء عالية الطاقة (للقوقعة والسماعات القوية)",
+      "nameEn": "Rayovac Extra Advanced Size 675 Blue High Power (Pack of 6)",
+      "category": "batteries",
+      "brand": "Rayovac",
+      "model": "Size 675 Blue",
+      "unit": "كرتون",
+      "costPrice": 22,
+      "salePrice": 55,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 0,
+      "minStockLevel": 10,
+      "stockByWarehouse": {
+        "wh-01": 45,
+        "wh-02": 18,
+        "wh-03": 12
+      }
+    },
+    {
+      "id": "item-sp-cs",
+      "sku": "SP-PH-CS",
+      "barcode": "628400400101",
+      "nameAr": "قرص فلاتر شمعية فوناك سيروشيلد (CeruShield Disk)",
+      "nameEn": "Phonak CeruShield Wax Filter Disk",
+      "category": "spare_parts",
+      "brand": "Phonak",
+      "model": "CeruShield Disk",
+      "unit": "قرص",
+      "costPrice": 35,
+      "salePrice": 75,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 0,
+      "minStockLevel": 15,
+      "stockByWarehouse": {
+        "wh-01": 60,
+        "wh-02": 30,
+        "wh-03": 20
+      }
+    },
+    {
+      "id": "item-sp-pw",
+      "sku": "SP-OT-PW",
+      "barcode": "628400400102",
+      "nameAr": "فلاتر شمعية أوتيكون بروفاكس ميني فيت (ProWax miniFit)",
+      "nameEn": "Oticon ProWax miniFit Filters",
+      "category": "spare_parts",
+      "brand": "Oticon",
+      "model": "ProWax miniFit",
+      "unit": "باكيت",
+      "costPrice": 32,
+      "salePrice": 70,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 0,
+      "minStockLevel": 15,
+      "stockByWarehouse": {
+        "wh-01": 50,
+        "wh-02": 25,
+        "wh-03": 15
+      }
+    },
+    {
+      "id": "item-acc-tv",
+      "sku": "ACC-PH-TV",
+      "barcode": "628500500101",
+      "nameAr": "جهاز بث التلفزيون اللاسلكي فوناك (Phonak TV Connector)",
+      "nameEn": "Phonak TV Connector Wireless Audio Streamer",
+      "category": "accessories",
+      "brand": "Phonak",
+      "model": "TV Connector V2",
+      "unit": "جهاز",
+      "costPrice": 550,
+      "salePrice": 950,
+      "taxRate": 0.15,
+      "hasSerials": true,
+      "warrantyMonths": 12,
+      "minStockLevel": 3,
+      "stockByWarehouse": {
+        "wh-01": 8,
+        "wh-02": 3,
+        "wh-03": 2
+      }
+    },
+    {
+      "id": "item-acc-dry",
+      "sku": "ACC-UV-DRY",
+      "barcode": "628500500102",
+      "nameAr": "جهاز تجفيف وتعقيم السماعات بالأشعة فوق البنفسجية (Dry-Cap UV)",
+      "nameEn": "Flow-Med Dry-Cap UV 2 Electronic Hearing Aid Dryer",
+      "category": "accessories",
+      "brand": "Flow-Med",
+      "model": "Dry-Cap UV 2",
+      "unit": "جهاز",
+      "costPrice": 210,
+      "salePrice": 380,
+      "taxRate": 0.15,
+      "hasSerials": false,
+      "warrantyMonths": 12,
+      "minStockLevel": 4,
+      "stockByWarehouse": {
+        "wh-01": 14,
+        "wh-02": 6,
+        "wh-03": 5
+      }
+    }
+  ],
+  "serialUnits": [
+    {
+      "id": "sn-01",
+      "itemId": "item-ha-01",
+      "serialNumber": "OT-M1-889104",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "status": "sold",
+      "clientId": "cl-1789657366631",
+      "invoiceId": "inv-1789657489780",
+      "warrantyEndDate": "2028-09-17"
+    },
+    {
+      "id": "sn-02",
+      "itemId": "item-ha-01",
+      "serialNumber": "OT-M1-889105",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "status": "in_stock"
+    },
+    {
+      "id": "sn-03",
+      "itemId": "item-ha-02",
+      "serialNumber": "PH-L9-440219",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "status": "in_stock"
+    },
+    {
+      "id": "sn-04",
+      "itemId": "item-ha-02",
+      "serialNumber": "PH-L9-440220",
+      "branchId": "br-02",
+      "warehouseId": "wh-02",
+      "status": "in_stock"
+    },
+    {
+      "id": "sn-05",
+      "itemId": "item-ha-03",
+      "serialNumber": "SG-7A-331088",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "status": "sold",
+      "clientId": "cl-01",
+      "invoiceId": "inv-1001",
+      "warrantyEndDate": "2028-09-15"
+    },
+    {
+      "id": "sn-06",
+      "itemId": "item-ha-04",
+      "serialNumber": "WD-44-129033",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "status": "trial",
+      "clientId": "cl-02"
+    }
+  ],
+  "clients": [
+    {
+      "nameAr": "ابراهيم محمد",
+      "nameEn": "ابراهيم محمد",
+      "phone": "0555444555",
+      "nationalId": "2455611451",
+      "gender": "male",
+      "age": 35,
+      "dob": "1980-01-01",
+      "cityAr": "الرياض",
+      "cityEn": "Riyadh",
+      "address": "حى العمل",
+      "id": "cl-1789657366631",
+      "fileNo": "F-2026-9627",
+      "createdAt": "2026-09-17"
+    },
+    {
+      "id": "cl-01",
+      "fileNo": "F-2026-0104",
+      "nationalId": "1048294821",
+      "nameAr": "محمد بن سلطان القحطاني",
+      "nameEn": "Muhammad Sultan Al-Qahtani",
+      "phone": "0505123456",
+      "secondaryPhone": "0555678901",
+      "gender": "male",
+      "dob": "1968-04-12",
+      "age": 58,
+      "cityAr": "الرياض",
+      "cityEn": "Riyadh",
+      "address": "حي النخيل، شارع الأمير نايف، فيلا 24",
+      "doctorId": "doc-01",
+      "hospitalId": "hosp-02",
+      "insuranceId": "ins-01",
+      "insurancePolicyNo": "BUP-884920-KSA",
+      "notes": "ضعف سمع حسي عصبي ثنائي تدريجي، يستخدم سماعة سيجنيا منذ شهر",
+      "createdAt": "2026-02-10"
+    },
+    {
+      "id": "cl-02",
+      "fileNo": "F-2026-0105",
+      "nationalId": "2019482710",
+      "nameAr": "نورة بنت صالح الدوسري",
+      "nameEn": "Noura Saleh Al-Dosari",
+      "phone": "0544987654",
+      "gender": "female",
+      "dob": "1984-11-20",
+      "age": 42,
+      "cityAr": "الرياض",
+      "cityEn": "Riyadh",
+      "address": "حي الملقا، طريق أنس بن مالك",
+      "doctorId": "doc-02",
+      "hospitalId": "hosp-01",
+      "insuranceId": "ins-02",
+      "insurancePolicyNo": "TAW-492019",
+      "notes": "تعاني من طنين في الأذن اليسرى مع فقدان سمع متوسط، قيد التجربة لسماعة وايدكس",
+      "createdAt": "2026-03-01"
+    },
+    {
+      "id": "cl-03",
+      "fileNo": "F-2026-0106",
+      "nationalId": "1099238472",
+      "nameAr": "عبدالله بن فهد الغامدي",
+      "nameEn": "Abdullah Fahad Al-Ghamdi",
+      "phone": "0567123987",
+      "gender": "male",
+      "dob": "1959-08-05",
+      "age": 67,
+      "cityAr": "الخبر",
+      "cityEn": "Al-Khobar",
+      "address": "حي الراكة الجنوبية، شارع مكة",
+      "doctorId": "doc-03",
+      "hospitalId": "hosp-03",
+      "notes": "تم طلب قالب سيليكون ناعم للأذنين، مراجع منتظم لفحص السمع السنوي",
+      "createdAt": "2026-04-15"
+    }
+  ],
+  "audiograms": [
+    {
+      "clientId": "cl-1789657366631",
+      "date": "2026-09-17",
+      "audiologistName": "د. هدى الشهري",
+      "testType": "فحص النغمات النقية التشخيصي (PTA)",
+      "leftAir": {
+        "125": 25,
+        "250": 60,
+        "500": 60,
+        "1000": 60,
+        "2000": 60,
+        "4000": 70,
+        "8000": 75
+      },
+      "rightAir": {
+        "125": 20,
+        "250": 25,
+        "500": 35,
+        "1000": 60,
+        "2000": 60,
+        "4000": 60,
+        "8000": 60
+      },
+      "leftBone": {
+        "250": 25,
+        "500": 40,
+        "1000": 45,
+        "2000": 55,
+        "4000": 65
+      },
+      "rightBone": {
+        "250": 20,
+        "500": 30,
+        "1000": 40,
+        "2000": 50,
+        "4000": 60
+      },
+      "ptaLeft": 60,
+      "ptaRight": 51.7,
+      "sdsLeft": 85,
+      "sdsRight": 90,
+      "notes": "",
+      "id": "aud-1789657404860",
+      "frequencies": [
+        125,
+        250,
+        500,
+        1000,
+        2000,
+        4000,
+        8000
+      ]
+    },
+    {
+      "id": "aud-01",
+      "clientId": "cl-01",
+      "date": "2026-03-05",
+      "audiologistName": "د. هدى الشهري",
+      "testType": "فحص النغمات النقية الشامل (Pure Tone Audiometry)",
+      "frequencies": [
+        125,
+        250,
+        500,
+        1000,
+        2000,
+        4000,
+        8000
+      ],
+      "leftAir": {
+        "125": 25,
+        "250": 30,
+        "500": 45,
+        "1000": 55,
+        "2000": 65,
+        "4000": 75,
+        "8000": 80
+      },
+      "rightAir": {
+        "125": 20,
+        "250": 25,
+        "500": 40,
+        "1000": 50,
+        "2000": 60,
+        "4000": 70,
+        "8000": 75
+      },
+      "leftBone": {
+        "250": 25,
+        "500": 40,
+        "1000": 50,
+        "2000": 60,
+        "4000": 70
+      },
+      "rightBone": {
+        "250": 20,
+        "500": 35,
+        "1000": 45,
+        "2000": 55,
+        "4000": 65
+      },
+      "ptaLeft": 55,
+      "ptaRight": 50,
+      "sdsLeft": 84,
+      "sdsRight": 88,
+      "notes": "ضعف سمع حسي عصبي متناظر منحدر للترددات العالية (Sloping Sensorineural Hearing Loss). استجابة ممتازة مع المعينات الرقمية المتطورة."
+    },
+    {
+      "id": "aud-02",
+      "clientId": "cl-02",
+      "date": "2026-03-12",
+      "audiologistName": "د. هدى الشهري",
+      "testType": "فحص سمعي تشخيصي مع اختبار تمييز الكلام",
+      "frequencies": [
+        125,
+        250,
+        500,
+        1000,
+        2000,
+        4000,
+        8000
+      ],
+      "leftAir": {
+        "125": 20,
+        "250": 25,
+        "500": 35,
+        "1000": 45,
+        "2000": 50,
+        "4000": 60,
+        "8000": 65
+      },
+      "rightAir": {
+        "125": 15,
+        "250": 20,
+        "500": 20,
+        "1000": 25,
+        "2000": 30,
+        "4000": 35,
+        "8000": 40
+      },
+      "leftBone": {
+        "250": 20,
+        "500": 30,
+        "1000": 40,
+        "2000": 45,
+        "4000": 55
+      },
+      "rightBone": {
+        "250": 15,
+        "500": 15,
+        "1000": 20,
+        "2000": 25,
+        "4000": 30
+      },
+      "ptaLeft": 43.3,
+      "ptaRight": 25,
+      "sdsLeft": 80,
+      "sdsRight": 96,
+      "notes": "فقدان سمع حسي عصبي متوسط بالأذن اليسرى وطبيعي إلى بسيط بالأذن اليمنى. يوصى ببرمجة تقنية تقليل الطنين."
+    }
+  ],
+  "earmoldOrders": [
+    {
+      "id": "emo-01",
+      "orderNo": "EMO-2026-0042",
+      "clientId": "cl-03",
+      "ear": "both",
+      "shellType": "soft_silicone",
+      "color": "beige",
+      "ventType": "1.5mm",
+      "deviceBrand": "Phonak",
+      "deviceModel": "Naida Paradise P70-UP",
+      "impressionDate": "2026-09-10",
+      "impressionBy": "أخصائي المعمل / سامي",
+      "workshop": "معمل الأمل للقوالب والتعويضات السمعية",
+      "expectedDate": "2026-09-18",
+      "status": "ready",
+      "price": 1100,
+      "cost": 440,
+      "notes": "المريض يعاني من ارتجاع صفير بالهيكل القديم، يرجى ضبط القناة بإحكام مريح وتنفيس متوازي 1.5 مم.",
+      "createdAt": "2026-09-10T11:00:00Z"
+    },
+    {
+      "id": "emo-02",
+      "orderNo": "EMO-2026-0043",
+      "clientId": "cl-01",
+      "ear": "left",
+      "shellType": "hard_acrylic",
+      "color": "clear",
+      "ventType": "2.0mm",
+      "deviceBrand": "Oticon",
+      "deviceModel": "More 1 miniRITE R (Micro-mold)",
+      "impressionDate": "2026-09-14",
+      "impressionBy": "د. هدى الشهري",
+      "workshop": "الورشة الفنية الداخلية - فرع الرياض",
+      "expectedDate": "2026-09-20",
+      "status": "in_production",
+      "price": 450,
+      "cost": 180,
+      "notes": "قالب مايكرو مدمج مع سماعة ريسيفر 85 ديسيبل.",
+      "createdAt": "2026-09-14T09:30:00Z"
+    }
+  ],
+  "invoices": [
+    {
+      "date": "2026-09-17",
+      "deliveryDate": "2026-09-19 15:03",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "costCenter": "CC-RIYADH-01",
+      "workshop": "الورشة الفنية الداخلية - فرع الرياض",
+      "clientId": "cl-1789657366631",
+      "sellerName": "د. طارق العتيبي",
+      "lines": [
+        {
+          "id": "ln-1789657423381-wyr",
+          "itemId": "item-ha-01",
+          "itemCode": "HA-OT-M1",
+          "itemNameAr": "سماعة أوتيكون مور 1 قابلة للشحن (Oticon More 1 miniRITE R)",
+          "itemNameEn": "Oticon More 1 miniRITE R Rechargeable Hearing Aid",
+          "unit": "قطعة",
+          "quantity": 1,
+          "unitPrice": 5400,
+          "grossAmount": 5400,
+          "discountPercent": 0,
+          "discountValue": 0,
+          "netAmount": 5400,
+          "taxPercent": 15,
+          "taxAmount": 810,
+          "totalAmount": 6210,
+          "warehouseId": "wh-01",
+          "serialNumbers": [
+            "OT-M1-889104"
+          ],
+          "isDelivered": true,
+          "isReady": true,
+          "isTrial": false
+        }
+      ],
+      "subtotalBeforeTax": 5400,
+      "totalDiscount": 0,
+      "taxAmount": 810,
+      "grandTotal": 6210,
+      "depositPaid": 6210,
+      "amountPaid": 6210,
+      "remainingDue": 0,
+      "paymentMethod": "mada",
+      "isInsurance": false,
+      "deliveryStatus": "delivered",
+      "notes": "",
+      "id": "inv-1789657489780",
+      "invoiceNo": "INV-2026-0094",
+      "status": "active"
+    },
+    {
+      "id": "inv-1001",
+      "invoiceNo": "INV-2026-0089",
+      "date": "2026-09-15",
+      "deliveryDate": "2026-09-15 16:30",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "costCenter": "CC-RIYADH-01",
+      "workshop": "الورشة الفنية الداخلية - فرع الرياض",
+      "clientId": "cl-01",
+      "doctorId": "doc-01",
+      "hospitalId": "hosp-02",
+      "sellerName": "فيصل الحربي",
+      "lines": [
+        {
+          "id": "ln-01",
+          "itemId": "item-ha-03",
+          "itemCode": "HA-SG-7AX",
+          "itemNameAr": "سماعة سيجنيا بيور تشارج أند جو 7AX",
+          "itemNameEn": "Signia Pure Charge&Go 7AX Hearing Aid",
+          "unit": "قطعة",
+          "quantity": 1,
+          "unitPrice": 13800,
+          "grossAmount": 13800,
+          "discountPercent": 10,
+          "discountValue": 1380,
+          "netAmount": 12420,
+          "taxPercent": 15,
+          "taxAmount": 1863,
+          "totalAmount": 14283,
+          "warehouseId": "wh-01",
+          "serialNumbers": [
+            "SG-7A-331088"
+          ],
+          "isDelivered": true,
+          "isReady": true,
+          "isTrial": false,
+          "notes": "برمجة جلسة أولى + ضمان 24 شهر شامل الصيانة"
+        },
+        {
+          "id": "ln-02",
+          "itemId": "item-bat-312",
+          "itemCode": "BAT-312-RAY",
+          "itemNameAr": "بطاريات ريوفاك حجم 312 بنية (كرتون 6 حبات)",
+          "itemNameEn": "Rayovac Extra Advanced Size 312 (Pack of 6)",
+          "unit": "كرتون",
+          "quantity": 2,
+          "unitPrice": 45,
+          "grossAmount": 90,
+          "discountPercent": 0,
+          "discountValue": 0,
+          "netAmount": 90,
+          "taxPercent": 15,
+          "taxAmount": 13.5,
+          "totalAmount": 103.5,
+          "warehouseId": "wh-01",
+          "isDelivered": true,
+          "isReady": true,
+          "isTrial": false
+        }
+      ],
+      "subtotalBeforeTax": 12510,
+      "totalDiscount": 1380,
+      "taxAmount": 1876.5,
+      "grandTotal": 14386.5,
+      "depositPaid": 2000,
+      "amountPaid": 12386.5,
+      "remainingDue": 0,
+      "paymentMethod": "split",
+      "paymentDetails": {
+        "cashAmount": 2386.5,
+        "madaAmount": 10000,
+        "visaAmount": 0,
+        "insuranceAmount": 0,
+        "depositAmount": 2000
+      },
+      "isInsurance": false,
+      "deliveryStatus": "delivered",
+      "status": "active",
+      "notes": "تم تسليم الجهاز كامل مع علبة الشحن والشاحن والبطاريات الإضافية."
+    },
+    {
+      "id": "inv-1002",
+      "invoiceNo": "INV-2026-0090",
+      "date": "2026-09-16",
+      "deliveryDate": "2026-09-18 18:00",
+      "branchId": "br-01",
+      "warehouseId": "wh-01",
+      "costCenter": "CC-RIYADH-01",
+      "workshop": "الورشة الفنية الداخلية - فرع الرياض",
+      "clientId": "cl-02",
+      "doctorId": "doc-02",
+      "hospitalId": "hosp-01",
+      "sellerName": "فيصل الحربي",
+      "lines": [
+        {
+          "id": "ln-03",
+          "itemId": "item-ha-04",
+          "itemCode": "HA-WD-440",
+          "itemNameAr": "سماعة وايدكس مومنت شير 440 (تجربة مريض)",
+          "itemNameEn": "Widex Moment Sheer 440 (Trial)",
+          "unit": "قطعة",
+          "quantity": 1,
+          "unitPrice": 15200,
+          "grossAmount": 15200,
+          "discountPercent": 15,
+          "discountValue": 2280,
+          "netAmount": 12920,
+          "taxPercent": 15,
+          "taxAmount": 1938,
+          "totalAmount": 14858,
+          "warehouseId": "wh-01",
+          "serialNumbers": [
+            "WD-44-129033"
+          ],
+          "isDelivered": false,
+          "isReady": true,
+          "isTrial": true,
+          "notes": "صرف بموجب خطاب تجربة لمدة أسبوعين مع تأمين مسترد"
+        }
+      ],
+      "subtotalBeforeTax": 12920,
+      "totalDiscount": 2280,
+      "taxAmount": 1938,
+      "grandTotal": 14858,
+      "depositPaid": 3000,
+      "amountPaid": 3000,
+      "remainingDue": 11858,
+      "paymentMethod": "mada",
+      "paymentDetails": {
+        "cashAmount": 0,
+        "madaAmount": 3000,
+        "visaAmount": 0,
+        "insuranceAmount": 0,
+        "depositAmount": 3000
+      },
+      "isInsurance": false,
+      "deliveryStatus": "trial",
+      "status": "active",
+      "notes": "خطاب تجربة رسمي معتمد من أخصائية السمعيات."
+    }
+  ],
+  "transfers": [
+    {
+      "id": "tr-01",
+      "transferNo": "TR-2026-0012",
+      "fromBranchId": "br-01",
+      "fromWarehouseId": "wh-01",
+      "toBranchId": "br-02",
+      "toWarehouseId": "wh-02",
+      "status": "completed",
+      "requestedBy": "أ. ريم الغامدي",
+      "approvedBy": "د. طارق العتيبي",
+      "receivedBy": "أمين مستودع الخبر",
+      "items": [
+        {
+          "itemId": "item-ha-02",
+          "itemCode": "HA-PH-L90",
+          "itemNameAr": "سماعة فوناك أوديو لوميتي 90",
+          "itemNameEn": "Phonak Audeo Lumity L90-R",
+          "quantity": 1,
+          "serials": [
+            "PH-L9-440220"
+          ]
+        },
+        {
+          "itemId": "item-bat-312",
+          "itemCode": "BAT-312-RAY",
+          "itemNameAr": "بطاريات ريوفاك حجم 312 بنية",
+          "itemNameEn": "Rayovac Extra Advanced Size 312",
+          "quantity": 20
+        }
+      ],
+      "createdAt": "2026-09-08T10:00:00Z",
+      "completedAt": "2026-09-10T14:30:00Z",
+      "notes": "تعزيز مخزون فرع الخبر لتلبية طلبات العيادة."
+    }
+  ],
+  "templates": [
+    {
+      "id": "tmpl-01",
+      "trigger": "order_ready",
+      "titleAr": "إشعار جاهزية القالب أو السماعة",
+      "titleEn": "Order Ready Notification",
+      "bodyAr": "مرحباً عزيزنا العميل {client_name}، نود إبلاغكم بأن طلبكم رقم ({order_no}) الخاص بالقالب/السماعة الطبية أصبح جاهزاً للاستلام والتجربة في {branch}. نتشرف بزيارتكم.",
+      "bodyEn": "Dear {client_name}, your custom earmold/hearing aid order ({order_no}) is now ready for pickup and fitting at {branch}. We look forward to your visit."
+    },
+    {
+      "id": "tmpl-02",
+      "trigger": "invoice_receipt",
+      "titleAr": "نسخة الفاتورة الإلكترونية",
+      "titleEn": "Invoice & Receipt Copy",
+      "bodyAr": "شكراً لثقتكم بنا، عزيزنا {client_name}. تم إصدار فاتورتكم رقم ({invoice_no}) بمبلغ إجمالي {grand_total} ر.س والمتبقي {remaining_due} ر.س. نتمنى لكم دوام الصحة والعافية.",
+      "bodyEn": "Thank you for choosing us, {client_name}. Your invoice ({invoice_no}) has been generated for {grand_total} SAR. Remaining balance: {remaining_due} SAR."
+    },
+    {
+      "id": "tmpl-03",
+      "trigger": "appointment",
+      "titleAr": "تذكير بموعد الفحص أو البرمجة",
+      "titleEn": "Fitting Appointment Reminder",
+      "bodyAr": "نذكركم بموعدكم القادم لجلسة فحص السمع وبرمجة السماعة يوم {date} في {branch} مع الأخصائي المعالج. يرجى تأكيد الحضور.",
+      "bodyEn": "Reminder of your upcoming audiology / fitting appointment on {date} at {branch}. Please confirm your attendance."
+    },
+    {
+      "id": "tmpl-04",
+      "trigger": "battery_reminder",
+      "titleAr": "تذكير بطاريات وصيانة وقائية",
+      "titleEn": "Battery & Maintenance Reminder",
+      "bodyAr": "عزيزنا {client_name}، حفاظاً على كفاءة سماعتكم الطبية، يسعدنا تذكيركم بمرور 6 أشهر على استلام السماعة لعمل فحص دوري مجاني واستلام حزمة بطاريات وفلاتر جديدة من أقرب فرع.",
+      "bodyEn": "Dear {client_name}, to keep your hearing aid performing at its best, you are invited for a complimentary periodic checkup and maintenance at {branch}."
+    }
+  ],
+  "messageLogs": [
+    {
+      "id": "msg-1789657489781",
+      "clientId": "cl-1789657366631",
+      "clientName": "ابراهيم محمد",
+      "phone": "0555444555",
+      "channel": "whatsapp",
+      "trigger": "invoice_receipt",
+      "content": "شكراً لثقتكم بنا، عزيزنا ابراهيم محمد. تم إصدار فاتورتكم رقم (INV-2026-0094) بمبلغ إجمالي 6210 ر.س والمتبقي 0 ر.س.",
+      "status": "delivered",
+      "sentAt": "2026-09-17 15:04"
+    },
+    {
+      "id": "msg-01",
+      "clientId": "cl-01",
+      "clientName": "محمد بن سلطان القحطاني",
+      "phone": "0505123456",
+      "channel": "whatsapp",
+      "trigger": "invoice_receipt",
+      "content": "شكراً لثقتكم بنا، عزيزنا محمد بن سلطان القحطاني. تم إصدار فاتورتكم رقم (INV-2026-0089) بمبلغ إجمالي 14386.5 ر.س والمتبقي 0 ر.س.",
+      "status": "delivered",
+      "sentAt": "2026-09-15 16:35"
+    },
+    {
+      "id": "msg-02",
+      "clientId": "cl-03",
+      "clientName": "عبدالله بن فهد الغامدي",
+      "phone": "0567123987",
+      "channel": "whatsapp",
+      "trigger": "order_ready",
+      "content": "مرحباً عزيزنا العميل عبدالله بن فهد الغامدي، نود إبلاغكم بأن طلبكم رقم (EMO-2026-0042) الخاص بالقالب أصبح جاهزاً للاستلام.",
+      "status": "sent",
+      "sentAt": "2026-09-16 11:20"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "aud-1789657489787-si6y",
+      "timestamp": "2026-09-17 15:04",
+      "userId": "usr-01",
+      "userName": "د. طارق العتيبي",
+      "branchId": "br-01",
+      "action": "CREATE_INVOICE",
+      "entityType": "INVOICE",
+      "entityId": "inv-1789657489780",
+      "details": "إصدار فاتورة مبيعات جديدة رقم INV-2026-0094 بإجمالي 6210 ر.س للمريض ابراهيم محمد"
+    },
+    {
+      "id": "aud-1789657404868-d0zo",
+      "timestamp": "2026-09-17 15:03",
+      "userId": "usr-01",
+      "userName": "د. طارق العتيبي",
+      "branchId": "br-01",
+      "action": "CREATE_AUDIOGRAM",
+      "entityType": "AUDIOGRAM",
+      "entityId": "aud-1789657404860",
+      "details": "تسجيل مخطط فحص سمعي للمريض ابراهيم محمد (PTA: L=60dB, R=51.7dB)"
+    },
+    {
+      "id": "aud-1789657366645-lx6j",
+      "timestamp": "2026-09-17 15:02",
+      "userId": "usr-01",
+      "userName": "د. طارق العتيبي",
+      "branchId": "br-01",
+      "action": "CREATE_CLIENT",
+      "entityType": "CLIENT",
+      "entityId": "cl-1789657366631",
+      "details": "تم تسجيل ملف مريض جديد: ابراهيم محمد (F-2026-9627)"
+    },
+    {
+      "id": "aud-log-01",
+      "timestamp": "2026-09-15 16:30",
+      "userId": "usr-03",
+      "userName": "فيصل الحربي",
+      "branchId": "br-01",
+      "action": "CREATE_INVOICE",
+      "entityType": "INVOICE",
+      "entityId": "inv-1001",
+      "details": "تم إصدار الفاتورة رقم INV-2026-0089 للعميل محمد بن سلطان القحطاني بقيمة 14,386.5 ر.س مع خصم 1,380 ر.س"
+    },
+    {
+      "id": "aud-log-02",
+      "timestamp": "2026-09-10 14:30",
+      "userId": "usr-01",
+      "userName": "د. طارق العتيبي",
+      "branchId": "br-01",
+      "action": "APPROVE_TRANSFER",
+      "entityType": "STOCK_TRANSFER",
+      "entityId": "tr-01",
+      "details": "اعتماد تحويل مخزني رقم TR-2026-0012 من مستودع الرياض إلى مستودع الخبر"
+    }
+  ]
+}
