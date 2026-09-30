@@ -9,6 +9,7 @@
     "lint": "next lint",
     "db:migrate": "prisma migrate dev --name init",
     "db:seed": "prisma db seed",
+    "db:seed:test": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed-test.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {
