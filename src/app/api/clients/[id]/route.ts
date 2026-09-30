@@ -1,29 +1,48 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb, logAudit } from '@/lib/db';
+import { prisma, mapAudiogram, mapInvoice, logAudit } from '@/lib/db';
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = readDb();
-  const client = db.clients.find((c) => c.id === params.id);
+  try {
+    const client = await prisma.client.findUnique({
+      where: { id: params.id },
+    });
 
-  if (!client) {
-    return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    if (!client) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
+
+    const [rawAudiograms, earmoldOrders, rawInvoices, devices] = await Promise.all([
+      prisma.audiogram.findMany({
+        where: { clientId: client.id },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.earmoldOrder.findMany({
+        where: { clientId: client.id },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.invoice.findMany({
+        where: { clientId: client.id },
+        orderBy: { date: 'desc' },
+      }),
+      prisma.serialUnit.findMany({
+        where: { clientId: client.id },
+      }),
+    ]);
+
+    return NextResponse.json({
+      client,
+      audiograms: rawAudiograms.map(mapAudiogram),
+      earmoldOrders,
+      invoices: rawInvoices.map(mapInvoice),
+      devices,
+    });
+  } catch (error) {
+    console.error('Error fetching client details:', error);
+    return NextResponse.json({ error: 'Failed to fetch client' }, { status: 500 });
   }
-
-  const audiograms = db.audiograms.filter((a) => a.clientId === client.id);
-  const earmoldOrders = db.earmoldOrders.filter((e) => e.clientId === client.id);
-  const invoices = db.invoices.filter((i) => i.clientId === client.id);
-  const devices = db.serialUnits.filter((s) => s.clientId === client.id);
-
-  return NextResponse.json({
-    client,
-    audiograms,
-    earmoldOrders,
-    invoices,
-    devices,
-  });
 }
 
 export async function PUT(
@@ -32,25 +51,36 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const db = readDb();
-    const index = db.clients.findIndex((c) => c.id === params.id);
 
-    if (index === -1) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    // Exclude relations / id from update payload
+    const {
+      id: _id,
+      audiograms: _audiograms,
+      earmoldOrders: _earmoldOrders,
+      invoices: _invoices,
+      devices: _devices,
+      ...updateData
+    } = body;
+
+    if (updateData.age !== undefined) {
+      updateData.age = Number(updateData.age);
     }
 
-    db.clients[index] = { ...db.clients[index], ...body };
-    writeDb(db);
+    const updatedClient = await prisma.client.update({
+      where: { id: params.id },
+      data: updateData,
+    });
 
-    logAudit(
+    await logAudit(
       'UPDATE_CLIENT',
       'CLIENT',
       params.id,
-      `تحديث بيانات المريض ${db.clients[index].nameAr}`
+      `تحديث بيانات المريض ${updatedClient.nameAr}`
     );
 
-    return NextResponse.json({ client: db.clients[index] });
+    return NextResponse.json({ client: updatedClient });
   } catch (error) {
+    console.error('Error updating client:', error);
     return NextResponse.json({ error: 'Failed to update client' }, { status: 500 });
   }
 }

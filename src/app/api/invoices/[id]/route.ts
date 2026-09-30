@@ -1,33 +1,47 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb, logAudit } from '@/lib/db';
+import { prisma, mapInvoice, logAudit } from '@/lib/db';
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = readDb();
-  const invoice = db.invoices.find((i) => i.id === params.id);
+  try {
+    const invoiceRaw = await prisma.invoice.findUnique({
+      where: { id: params.id },
+      include: {
+        client: true,
+        doctor: true,
+        hospital: true,
+        branch: true,
+      },
+    });
 
-  if (!invoice) {
-    return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    if (!invoiceRaw) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    const { client, doctor, hospital, branch, ...raw } = invoiceRaw;
+    const invoice = mapInvoice(raw);
+
+    let insuranceCompany = null;
+    if (invoice.insuranceDetails?.companyId) {
+      insuranceCompany = await prisma.insuranceCompany.findUnique({
+        where: { id: invoice.insuranceDetails.companyId },
+      });
+    }
+
+    return NextResponse.json({
+      invoice,
+      client,
+      doctor,
+      hospital,
+      branch,
+      insuranceCompany,
+    });
+  } catch (error) {
+    console.error('Error fetching invoice details:', error);
+    return NextResponse.json({ error: 'Failed to fetch invoice' }, { status: 500 });
   }
-
-  const client = db.clients.find((c) => c.id === invoice.clientId);
-  const doctor = db.doctors.find((d) => d.id === invoice.doctorId);
-  const hospital = db.hospitals.find((h) => h.id === invoice.hospitalId);
-  const branch = db.branches.find((b) => b.id === invoice.branchId);
-  const insuranceCompany = invoice.insuranceDetails?.companyId
-    ? db.insuranceCompanies.find((ic) => ic.id === invoice.insuranceDetails?.companyId)
-    : undefined;
-
-  return NextResponse.json({
-    invoice,
-    client,
-    doctor,
-    hospital,
-    branch,
-    insuranceCompany,
-  });
 }
 
 export async function PUT(
@@ -36,25 +50,46 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const db = readDb();
-    const index = db.invoices.findIndex((i) => i.id === params.id);
 
-    if (index === -1) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    const {
+      id: _id,
+      client: _client,
+      doctor: _doctor,
+      hospital: _hospital,
+      branch: _branch,
+      clientNameAr: _cAr,
+      clientNameEn: _cEn,
+      clientPhone: _cPh,
+      doctorNameAr: _dAr,
+      branchNameAr: _bAr,
+      ...updateData
+    } = body;
+
+    if (updateData.lines && typeof updateData.lines !== 'string') {
+      updateData.lines = JSON.stringify(updateData.lines);
+    }
+    if (updateData.paymentDetails && typeof updateData.paymentDetails !== 'string') {
+      updateData.paymentDetails = JSON.stringify(updateData.paymentDetails);
+    }
+    if (updateData.insuranceDetails && typeof updateData.insuranceDetails !== 'string') {
+      updateData.insuranceDetails = JSON.stringify(updateData.insuranceDetails);
     }
 
-    db.invoices[index] = { ...db.invoices[index], ...body };
-    writeDb(db);
+    const updated = await prisma.invoice.update({
+      where: { id: params.id },
+      data: updateData,
+    });
 
-    logAudit(
+    await logAudit(
       'UPDATE_INVOICE',
       'INVOICE',
       params.id,
-      `تعديل الفاتورة رقم ${db.invoices[index].invoiceNo}`
+      `تعديل الفاتورة رقم ${updated.invoiceNo}`
     );
 
-    return NextResponse.json({ invoice: db.invoices[index] });
+    return NextResponse.json({ invoice: mapInvoice(updated) });
   } catch (error) {
+    console.error('Error updating invoice:', error);
     return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 });
   }
 }

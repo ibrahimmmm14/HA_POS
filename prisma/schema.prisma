@@ -1,0 +1,389 @@
+// This is your Prisma schema file for HA_POS (Hearing Aid POS System)
+// Database: SQLite (local file — no server needed)
+// Learn more about Prisma: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ORGANIZATION STRUCTURE
+// ─────────────────────────────────────────────
+
+model Branch {
+  id                 String       @id
+  code               String       @unique
+  nameAr             String
+  nameEn             String
+  cityAr             String
+  cityEn             String
+  addressAr          String
+  addressEn          String
+  phone              String
+  taxNumber          String
+  defaultWarehouseId String
+
+  // Relations
+  warehouses     Warehouse[]
+  serialUnits    SerialUnit[]
+  invoices       Invoice[]
+  transfers_from StockTransfer[] @relation("FromBranch")
+  transfers_to   StockTransfer[] @relation("ToBranch")
+  auditLogs      AuditLog[]
+
+  @@map("branches")
+}
+
+model Warehouse {
+  id       String @id
+  branchId String
+  code     String @unique
+  nameAr   String
+  nameEn   String
+
+  // Relations
+  branch         Branch        @relation(fields: [branchId], references: [id])
+  serialUnits    SerialUnit[]
+  invoices       Invoice[]
+  transfers_from StockTransfer[] @relation("FromWarehouse")
+  transfers_to   StockTransfer[] @relation("ToWarehouse")
+
+  @@map("warehouses")
+}
+
+model User {
+  id              String @id
+  username        String @unique
+  nameAr          String
+  nameEn          String
+  role            String
+  branchIds       String
+  currentBranchId String
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// MASTER DATA
+// ─────────────────────────────────────────────
+
+model Doctor {
+  id                String  @id
+  nameAr            String
+  nameEn            String
+  specialtyAr       String
+  specialtyEn       String
+  phone             String
+  hospitalId        String
+  commissionPercent Float   @default(0)
+
+  // Relations
+  hospital  Hospital  @relation(fields: [hospitalId], references: [id])
+  clients   Client[]
+  invoices  Invoice[]
+
+  @@map("doctors")
+}
+
+model Hospital {
+  id     String @id
+  code   String @unique
+  nameAr String
+  nameEn String
+  cityAr String
+  cityEn String
+  phone  String
+
+  // Relations
+  doctors  Doctor[]
+  clients  Client[]
+  invoices Invoice[]
+
+  @@map("hospitals")
+}
+
+model InsuranceCompany {
+  id                     String  @id
+  code                   String  @unique
+  nameAr                 String
+  nameEn                 String
+  phone                  String
+  defaultCoveragePercent Float   @default(0)
+  requiresPreApproval    Boolean @default(false)
+
+  // Relations
+  clients Client[]
+
+  @@map("insurance_companies")
+}
+
+// ─────────────────────────────────────────────
+// INVENTORY
+// ─────────────────────────────────────────────
+
+model Item {
+  id               String  @id
+  sku              String  @unique
+  barcode          String
+  nameAr           String
+  nameEn           String
+  category         String
+  brand            String
+  model            String
+  unit             String
+  costPrice        Float
+  salePrice        Float
+  taxRate          Float   @default(0.15)
+  hasSerials       Boolean @default(false)
+  warrantyMonths   Int     @default(0)
+  minStockLevel    Int     @default(0)
+  image            String?
+  stockByWarehouse String  @default("{}")
+
+  // Relations
+  serialUnits SerialUnit[]
+
+  @@map("items")
+}
+
+model SerialUnit {
+  id              String  @id
+  itemId          String
+  serialNumber    String  @unique
+  branchId        String
+  warehouseId     String
+  status          String
+  invoiceId       String?
+  clientId        String?
+  warrantyEndDate String?
+
+  // Relations
+  item      Item      @relation(fields: [itemId], references: [id])
+  branch    Branch    @relation(fields: [branchId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  @@map("serial_units")
+}
+
+// ─────────────────────────────────────────────
+// CLINICAL / PATIENTS
+// ─────────────────────────────────────────────
+
+model Client {
+  id                String  @id
+  fileNo            String  @unique
+  nationalId        String
+  nameAr            String
+  nameEn            String
+  phone             String
+  secondaryPhone    String?
+  gender            String
+  dob               String
+  age               Int
+  cityAr            String
+  cityEn            String
+  address           String
+  doctorId          String?
+  hospitalId        String?
+  insuranceId       String?
+  insurancePolicyNo String?
+  notes             String?
+  createdAt         String
+
+  // Relations
+  doctor           Doctor?           @relation(fields: [doctorId], references: [id])
+  hospital         Hospital?         @relation(fields: [hospitalId], references: [id])
+  insuranceCompany InsuranceCompany? @relation(fields: [insuranceId], references: [id])
+  audiograms       Audiogram[]
+  earmoldOrders    EarmoldOrder[]
+  invoices         Invoice[]
+  messageLogs      MessageLog[]
+
+  @@map("clients")
+}
+
+model Audiogram {
+  id              String  @id
+  clientId        String
+  date            String
+  audiologistName String
+  testType        String
+  frequencies     String
+  leftAir         String
+  rightAir        String
+  leftBone        String
+  rightBone       String
+  ptaLeft         Float
+  ptaRight        Float
+  sdsLeft         Float
+  sdsRight        Float
+  notes           String?
+
+  // Relations
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("audiograms")
+}
+
+// ─────────────────────────────────────────────
+// EARMOLD WORKSHOP ORDERS
+// ─────────────────────────────────────────────
+
+model EarmoldOrder {
+  id             String  @id
+  orderNo        String  @unique
+  clientId       String
+  ear            String
+  shellType      String
+  color          String
+  ventType       String
+  deviceBrand    String?
+  deviceModel    String?
+  impressionDate String
+  impressionBy   String
+  workshop       String
+  expectedDate   String
+  status         String
+  price          Float
+  cost           Float
+  notes          String?
+  invoiceId      String?
+  createdAt      String
+
+  // Relations
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("earmold_orders")
+}
+
+// ─────────────────────────────────────────────
+// INVOICING
+// ─────────────────────────────────────────────
+
+model Invoice {
+  id                String  @id
+  invoiceNo         String  @unique
+  date              String
+  deliveryDate      String
+  branchId          String
+  warehouseId       String
+  costCenter        String
+  workshop          String
+  clientId          String
+  doctorId          String?
+  hospitalId        String?
+  sellerName        String
+  lines             String
+  subtotalBeforeTax Float
+  totalDiscount     Float
+  taxAmount         Float
+  grandTotal        Float
+  depositPaid       Float   @default(0)
+  amountPaid        Float
+  remainingDue      Float
+  paymentMethod     String
+  paymentDetails    String?
+  isInsurance       Boolean @default(false)
+  insuranceDetails  String?
+  deliveryStatus    String
+  returnOfInvoiceId String?
+  status            String
+  earmoldOrderId    String?
+  notes             String?
+
+  // Relations
+  branch    Branch    @relation(fields: [branchId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  client    Client    @relation(fields: [clientId], references: [id])
+  doctor    Doctor?   @relation(fields: [doctorId], references: [id])
+  hospital  Hospital? @relation(fields: [hospitalId], references: [id])
+
+  @@map("invoices")
+}
+
+// ─────────────────────────────────────────────
+// INTER-BRANCH TRANSFERS
+// ─────────────────────────────────────────────
+
+model StockTransfer {
+  id              String  @id
+  transferNo      String  @unique
+  fromBranchId    String
+  fromWarehouseId String
+  toBranchId      String
+  toWarehouseId   String
+  status          String
+  requestedBy     String
+  approvedBy      String?
+  receivedBy      String?
+  items           String
+  createdAt       String
+  completedAt     String?
+  notes           String?
+
+  // Relations
+  fromBranch    Branch    @relation("FromBranch", fields: [fromBranchId], references: [id])
+  toBranch      Branch    @relation("ToBranch", fields: [toBranchId], references: [id])
+  fromWarehouse Warehouse @relation("FromWarehouse", fields: [fromWarehouseId], references: [id])
+  toWarehouse   Warehouse @relation("ToWarehouse", fields: [toWarehouseId], references: [id])
+
+  @@map("stock_transfers")
+}
+
+// ─────────────────────────────────────────────
+// MESSAGING
+// ─────────────────────────────────────────────
+
+model MessageTemplate {
+  id      String @id
+  trigger String
+  titleAr String
+  titleEn String
+  bodyAr  String
+  bodyEn  String
+
+  @@map("message_templates")
+}
+
+model MessageLog {
+  id         String @id
+  clientId   String
+  clientName String
+  phone      String
+  channel    String
+  trigger    String
+  content    String
+  status     String
+  sentAt     String
+
+  // Relations
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("message_logs")
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOGS
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String @id
+  timestamp  String
+  userId     String
+  userName   String
+  branchId   String
+  action     String
+  entityType String
+  entityId   String
+  details    String
+
+  // Relations
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  @@map("audit_logs")
+}

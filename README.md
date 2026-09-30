@@ -113,9 +113,9 @@ graph TD
     end
 
     subgraph DataLayer [Storage & Compliance]
-        JSONDB[(data/db.json Database)]
+        SQLiteDB[(Prisma ORM & SQLite: prisma/dev.db)]
         ZatcaQR[ZATCA TLV Base64 QR Generator]
-        SeedData[Initial Seed Data & Migrator]
+        SeedData[Prisma Seed Script: prisma/seed.ts]
     end
 
     NextApp --> Frontend
@@ -186,7 +186,7 @@ HA_POS/
 - **Language**: [TypeScript 5](https://www.typescriptlang.org/)
 - **UI & Styling**: [Tailwind CSS 3](https://tailwindcss.com/), [PostCSS](https://postcss.org/), [Lucide React](https://lucide.dev/) (Icons)
 - **State & Context**: React Context API for Language (AR/EN RTL/LTR) and Branch Selection
-- **Persistence**: File-based JSON Database Engine (`src/lib/db.ts`) with typed schemas and auto-seeding
+- **Database & ORM**: [Prisma ORM 6](https://www.prisma.io/) with local **SQLite** database (`prisma/dev.db`) — type-safe models, automated migrations, and seed scripts
 - **Standards & Regulations**: Saudi ZATCA E-Invoicing TLV QR Code generation
 
 ---
@@ -293,19 +293,47 @@ The database (`data/db.json`) is automatically initialized on the first run with
 
 ---
 
-## 💾 Data Storage & Seed Data
+## 💾 Database Architecture & Data Storage
 
-The application utilizes an embedded JSON database engine located at:
+The application uses **Prisma ORM 6** with an embedded **SQLite** database located at:
 ```text
-data/db.json
+prisma/dev.db
 ```
-- Fully typed using schemas defined in `src/types/index.ts`.
-- Automatically generated if not present from `src/lib/seedData.ts`.
-- Contains realistic sample records:
-  - **Branches**: Riyadh Main Center, Jeddah Medical Branch, Dammam Clinic.
-  - **Items**: High-end digital hearing aids (Phonak, Oticon, Signia), custom CIC earmolds, Rayovac zinc-air batteries, wax filters.
-  - **Serial Units**: Tracked units with active warranty and trial statuses.
-  - **Patients & Invoices**: Realistic bilingual patient files, audiograms, and invoices.
+
+### Database Schema Models
+Defined in `prisma/schema.prisma`:
+- **Branches & Warehouses**: Multi-branch physical locations and inventory depots (`Branch`, `Warehouse`).
+- **Users & Permissions**: System users, credentials, roles, and branch assignments (`User`).
+- **Master Data**: Referring doctors, affiliated hospitals, and health insurance providers (`Doctor`, `Hospital`, `InsuranceCompany`).
+- **Inventory & Traceability**: Catalog items, barcodes, prices, stock per warehouse, and serial units with warranty tracking (`Item`, `SerialUnit`).
+- **Clinical & Lab**: Patients/Clients, Pure Tone Audiometry (PTA) tests, and custom earmold workshop orders (`Client`, `Audiogram`, `EarmoldOrder`).
+- **Sales & Financials**: Point-of-Sale & Clinical invoices with item lines, tax calculations, deposits, and split payments (`Invoice`).
+- **Stock Movement**: Inter-branch transfers, warehouse dispatches, and receptions (`StockTransfer`).
+- **Messaging & Audit**: Notification templates, WhatsApp/SMS message dispatch logs, and action audit trail (`MessageTemplate`, `MessageLog`, `AuditLog`).
+
+### Setting Up & Managing the Database
+
+1. **Run Migrations (Create Tables)**:
+   ```bash
+   npm run db:migrate
+   ```
+   This executes `prisma migrate dev --name init` which creates `prisma/dev.db` and applies all migrations from `prisma/migrations/`.
+
+2. **Seed Initial Data**:
+   ```bash
+   npm run db:seed
+   ```
+   Executes `prisma/seed.ts` via `ts-node` to populate the database with realistic sample records:
+   - **Branches**: Riyadh Main Center, Jeddah Medical Branch, Dammam Clinic.
+   - **Items**: High-end digital hearing aids (Phonak, Oticon, Signia), custom CIC earmolds, Rayovac zinc-air batteries, wax filters.
+   - **Serial Units**: Tracked units with active warranty and trial statuses.
+   - **Patients & Invoices**: Realistic bilingual patient files, audiograms, and invoices.
+
+3. **Visual Database Browser (Prisma Studio)**:
+   ```bash
+   npm run db:studio
+   ```
+   Opens a modern web GUI at `http://localhost:5555` to view, filter, insert, and edit records in real time.
 
 ---
 
@@ -314,9 +342,12 @@ data/db.json
 | Command | Description |
 |---|---|
 | `npm run dev` | Starts the Next.js local development server on port 3000 |
-| `npm run build` | Builds the optimized production build |
+| `npm run build` | Builds the optimized production bundle |
 | `npm run start` | Runs the compiled production build |
 | `npm run lint` | Runs ESLint to check for code quality and syntax issues |
+| `npm run db:migrate` | Runs Prisma schema migration to create or update the SQLite database schema |
+| `npm run db:seed` | Populates the SQLite database with initial demo & master dataset |
+| `npm run db:studio` | Launches visual Prisma Studio GUI on `http://localhost:5555` to inspect and edit database records |
 
 ---
 

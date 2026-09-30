@@ -1,54 +1,96 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb, logAudit } from '@/lib/db';
-import { Item } from '@/types';
+import { prisma, mapItem, logAudit } from '@/lib/db';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get('category');
-  const search = searchParams.get('search')?.toLowerCase();
-  const branchId = searchParams.get('branchId');
+  try {
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const search = searchParams.get('search')?.toLowerCase().trim();
 
-  const db = readDb();
-  let items = db.items;
+    const [rawItems, serialUnits] = await Promise.all([
+      prisma.item.findMany({
+        orderBy: { nameAr: 'asc' },
+      }),
+      prisma.serialUnit.findMany(),
+    ]);
 
-  if (category && category !== 'all') {
-    items = items.filter((item) => item.category === category);
+    let items = rawItems.map(mapItem);
+
+    if (category && category !== 'all') {
+      items = items.filter((item) => item.category === category);
+    }
+
+    if (search) {
+      items = items.filter(
+        (item) =>
+          item.nameAr.toLowerCase().includes(search) ||
+          item.nameEn.toLowerCase().includes(search) ||
+          item.sku.toLowerCase().includes(search) ||
+          item.barcode.includes(search)
+      );
+    }
+
+    return NextResponse.json({
+      items,
+      serials: serialUnits,
+    });
+  } catch (error) {
+    console.error('Error fetching inventory items:', error);
+    return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 });
   }
-
-  if (search) {
-    items = items.filter(
-      (item) =>
-        item.nameAr.toLowerCase().includes(search) ||
-        item.nameEn.toLowerCase().includes(search) ||
-        item.sku.toLowerCase().includes(search) ||
-        item.barcode.includes(search)
-    );
-  }
-
-  return NextResponse.json({
-    items,
-    serials: db.serialUnits,
-  });
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const db = readDb();
 
     if (body.type === 'item') {
-      const newItem: Item = {
-        ...body.data,
-        id: `item-${Date.now()}`,
+      const itemData = body.data || {};
+      const id = itemData.id || `item-${Date.now()}`;
+
+      const stockObj = itemData.stockByWarehouse || {
+        'wh-01': 10,
+        'wh-02': 5,
+        'wh-03': 5,
       };
-      db.items.push(newItem);
-      writeDb(db);
-      logAudit('CREATE_ITEM', 'ITEM', newItem.id, `Created item ${newItem.nameAr} (${newItem.sku})`);
+
+      const created = await prisma.item.create({
+        data: {
+          id,
+          sku: itemData.sku || `SKU-${Date.now()}`,
+          barcode: itemData.barcode || `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
+          nameAr: itemData.nameAr || '',
+          nameEn: itemData.nameEn || '',
+          category: itemData.category || 'hearing_aids',
+          brand: itemData.brand || 'Generic',
+          model: itemData.model || '',
+          unit: itemData.unit || 'حبة',
+          costPrice: Number(itemData.costPrice) || 0,
+          salePrice: Number(itemData.salePrice) || 0,
+          taxRate: itemData.taxRate !== undefined ? Number(itemData.taxRate) : 0.15,
+          hasSerials: Boolean(itemData.hasSerials),
+          warrantyMonths: Number(itemData.warrantyMonths) || 0,
+          minStockLevel: Number(itemData.minStockLevel) || 5,
+          image: itemData.image || null,
+          stockByWarehouse: JSON.stringify(stockObj),
+        },
+      });
+
+      const newItem = mapItem(created);
+
+      await logAudit(
+        'CREATE_ITEM',
+        'ITEM',
+        newItem.id,
+        `Created item ${newItem.nameAr} (${newItem.sku})`
+      );
+
       return NextResponse.json({ item: newItem });
     }
 
     return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
   } catch (error) {
+    console.error('Error creating inventory item:', error);
     return NextResponse.json({ error: 'Failed to process item' }, { status: 500 });
   }
 }

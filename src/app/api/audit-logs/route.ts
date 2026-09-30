@@ -1,7 +1,15 @@
 import { NextResponse } from 'next/server';
-import { readDb } from '@/lib/db';
+import { prisma } from '@/lib/db';
 
 export async function GET() {
-  const db = readDb();
-  return NextResponse.json({ logs: db.auditLogs.slice(0, 50) });
+  try {
+    const logs = await prisma.auditLog.findMany({
+      take: 50,
+      orderBy: { timestamp: 'desc' },
+    });
+    return NextResponse.json({ logs });
+  } catch (error) {
+    console.error('Error fetching audit logs:', error);
+    return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
+  }
 }

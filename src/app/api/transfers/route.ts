@@ -1,44 +1,72 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb, logAudit } from '@/lib/db';
+import { prisma, mapStockTransfer, mapItem, logAudit } from '@/lib/db';
 import { StockTransfer } from '@/types';
 
+type TransferItem = StockTransfer['items'][number];
+
 export async function GET() {
-  const db = readDb();
-  const transfersWithNames = db.transfers.map((tr) => {
-    const fromBranch = db.branches.find((b) => b.id === tr.fromBranchId);
-    const toBranch = db.branches.find((b) => b.id === tr.toBranchId);
-    const fromWh = db.warehouses.find((w) => w.id === tr.fromWarehouseId);
-    const toWh = db.warehouses.find((w) => w.id === tr.toWarehouseId);
-    return {
-      ...tr,
-      fromBranchNameAr: fromBranch?.nameAr || '-',
-      toBranchNameAr: toBranch?.nameAr || '-',
-      fromWhNameAr: fromWh?.nameAr || '-',
-      toWhNameAr: toWh?.nameAr || '-',
-    };
-  });
-  return NextResponse.json({ transfers: transfersWithNames });
+  try {
+    const rawTransfers = await prisma.stockTransfer.findMany({
+      include: {
+        fromBranch: { select: { nameAr: true } },
+        toBranch: { select: { nameAr: true } },
+        fromWarehouse: { select: { nameAr: true } },
+        toWarehouse: { select: { nameAr: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const transfersWithNames = rawTransfers.map((tr) => {
+      const { fromBranch, toBranch, fromWarehouse, toWarehouse, ...raw } = tr;
+      return {
+        ...mapStockTransfer(raw),
+        fromBranchNameAr: fromBranch?.nameAr || '-',
+        toBranchNameAr: toBranch?.nameAr || '-',
+        fromWhNameAr: fromWarehouse?.nameAr || '-',
+        toWhNameAr: toWarehouse?.nameAr || '-',
+      };
+    });
+
+    return NextResponse.json({ transfers: transfersWithNames });
+  } catch (error) {
+    console.error('Error fetching transfers:', error);
+    return NextResponse.json({ error: 'Failed to fetch transfers' }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const db = readDb();
 
-    const transferNo = `TR-${new Date().getFullYear()}-${String(db.transfers.length + 13).padStart(4, '0')}`;
+    const count = await prisma.stockTransfer.count();
+    const transferNo =
+      body.transferNo ||
+      `TR-${new Date().getFullYear()}-${String(count + 13).padStart(4, '0')}`;
 
-    const newTransfer: StockTransfer = {
-      ...body,
-      id: `tr-${Date.now()}`,
-      transferNo,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
+    const items: TransferItem[] = body.items || [];
 
-    db.transfers.unshift(newTransfer);
-    writeDb(db);
+    const created = await prisma.stockTransfer.create({
+      data: {
+        id: body.id || `tr-${Date.now()}`,
+        transferNo,
+        fromBranchId: body.fromBranchId,
+        fromWarehouseId: body.fromWarehouseId,
+        toBranchId: body.toBranchId,
+        toWarehouseId: body.toWarehouseId,
+        status: 'pending',
+        requestedBy: body.requestedBy || 'أمين المستودع',
+        approvedBy: body.approvedBy || null,
+        receivedBy: body.receivedBy || null,
+        items: JSON.stringify(items),
+        createdAt: body.createdAt || new Date().toISOString(),
+        completedAt: null,
+        notes: body.notes || null,
+      },
+    });
 
-    logAudit(
+    const newTransfer = mapStockTransfer(created);
+
+    await logAudit(
       'CREATE_STOCK_TRANSFER',
       'STOCK_TRANSFER',
       newTransfer.id,
@@ -47,6 +75,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ transfer: newTransfer });
   } catch (error) {
+    console.error('Error creating stock transfer:', error);
     return NextResponse.json({ error: 'Failed to create transfer' }, { status: 500 });
   }
 }
@@ -54,55 +83,84 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, status, action } = body;
-    const db = readDb();
-    const index = db.transfers.findIndex((t) => t.id === id);
+    const { id, status } = body;
 
-    if (index === -1) {
+    const prevTransferRaw = await prisma.stockTransfer.findUnique({
+      where: { id },
+    });
+
+    if (!prevTransferRaw) {
       return NextResponse.json({ error: 'Transfer not found' }, { status: 404 });
     }
 
-    const transfer = db.transfers[index];
-    const prevStatus = transfer.status;
-    transfer.status = status;
+    const prevTransfer = mapStockTransfer(prevTransferRaw);
+    const prevStatus = prevTransfer.status;
+
+    let completedAt = prevTransfer.completedAt;
 
     if (status === 'completed' && prevStatus !== 'completed') {
-      transfer.completedAt = new Date().toISOString();
+      completedAt = new Date().toISOString();
+
       // Move stock between warehouses
-      for (const itemTr of transfer.items) {
-        const item = db.items.find((i) => i.id === itemTr.itemId);
-        if (item) {
-          item.stockByWarehouse[transfer.fromWarehouseId] = Math.max(
+      for (const itemTr of prevTransfer.items) {
+        const rawItem = await prisma.item.findUnique({
+          where: { id: itemTr.itemId },
+        });
+
+        if (rawItem) {
+          const item = mapItem(rawItem);
+          const currentFromStock = item.stockByWarehouse[prevTransfer.fromWarehouseId] || 0;
+          const currentToStock = item.stockByWarehouse[prevTransfer.toWarehouseId] || 0;
+
+          item.stockByWarehouse[prevTransfer.fromWarehouseId] = Math.max(
             0,
-            (item.stockByWarehouse[transfer.fromWarehouseId] || 0) - itemTr.quantity
+            currentFromStock - itemTr.quantity
           );
-          item.stockByWarehouse[transfer.toWarehouseId] =
-            (item.stockByWarehouse[transfer.toWarehouseId] || 0) + itemTr.quantity;
+          item.stockByWarehouse[prevTransfer.toWarehouseId] = currentToStock + itemTr.quantity;
+
+          await prisma.item.update({
+            where: { id: itemTr.itemId },
+            data: {
+              stockByWarehouse: JSON.stringify(item.stockByWarehouse),
+            },
+          });
         }
 
         // Move serial numbers if any
         if (itemTr.serials && itemTr.serials.length > 0) {
           for (const sn of itemTr.serials) {
-            const serialUnit = db.serialUnits.find((s) => s.serialNumber === sn);
-            if (serialUnit) {
-              serialUnit.branchId = transfer.toBranchId;
-              serialUnit.warehouseId = transfer.toWarehouseId;
-            }
+            await prisma.serialUnit.updateMany({
+              where: { serialNumber: sn },
+              data: {
+                branchId: prevTransfer.toBranchId,
+                warehouseId: prevTransfer.toWarehouseId,
+              },
+            });
           }
         }
       }
     }
 
-    writeDb(db);
-    logAudit(
+    const updatedRaw = await prisma.stockTransfer.update({
+      where: { id },
+      data: {
+        status,
+        completedAt,
+      },
+    });
+
+    const updatedTransfer = mapStockTransfer(updatedRaw);
+
+    await logAudit(
       'UPDATE_TRANSFER_STATUS',
       'STOCK_TRANSFER',
-      transfer.id,
-      `تحديث حالة أمر التحويل ${transfer.transferNo} إلى ${status}`
+      updatedTransfer.id,
+      `تحديث حالة أمر التحويل ${updatedTransfer.transferNo} إلى ${status}`
     );
 
-    return NextResponse.json({ transfer });
+    return NextResponse.json({ transfer: updatedTransfer });
   } catch (error) {
+    console.error('Error updating stock transfer:', error);
     return NextResponse.json({ error: 'Failed to update transfer' }, { status: 500 });
   }
 }

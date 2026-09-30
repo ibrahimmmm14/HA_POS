@@ -1,56 +1,82 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb, logAudit } from '@/lib/db';
-import { EarmoldOrder, MessageLog } from '@/types';
+import { prisma, logAudit } from '@/lib/db';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
-  const clientId = searchParams.get('clientId');
+  try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const clientId = searchParams.get('clientId');
 
-  const db = readDb();
-  let orders = db.earmoldOrders;
+    const orders = await prisma.earmoldOrder.findMany({
+      where: {
+        ...(status && status !== 'all' ? { status } : {}),
+        ...(clientId ? { clientId } : {}),
+      },
+      include: {
+        client: {
+          select: {
+            nameAr: true,
+            nameEn: true,
+            phone: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  if (status && status !== 'all') {
-    orders = orders.filter((o) => o.status === status);
-  }
-  if (clientId) {
-    orders = orders.filter((o) => o.clientId === clientId);
-  }
-
-  // Include client names
-  const ordersWithClients = orders.map((o) => {
-    const client = db.clients.find((c) => c.id === o.clientId);
-    return {
+    const ordersWithClients = orders.map((o) => ({
       ...o,
-      clientNameAr: client?.nameAr || 'غير محدد',
-      clientNameEn: client?.nameEn || 'Unknown',
-      clientPhone: client?.phone || '',
-    };
-  });
+      clientNameAr: o.client?.nameAr || 'غير محدد',
+      clientNameEn: o.client?.nameEn || 'Unknown',
+      clientPhone: o.client?.phone || '',
+    }));
 
-  return NextResponse.json({ orders: ordersWithClients });
+    return NextResponse.json({ orders: ordersWithClients });
+  } catch (error) {
+    console.error('Error fetching earmold orders:', error);
+    return NextResponse.json({ error: 'Failed to fetch earmold orders' }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const db = readDb();
 
-    const orderNo = `EMO-${new Date().getFullYear()}-${String(db.earmoldOrders.length + 43).padStart(4, '0')}`;
+    const count = await prisma.earmoldOrder.count();
+    const orderNo =
+      body.orderNo ||
+      `EMO-${new Date().getFullYear()}-${String(count + 43).padStart(4, '0')}`;
 
-    const newOrder: EarmoldOrder = {
-      ...body,
-      id: `emo-${Date.now()}`,
-      orderNo,
-      createdAt: new Date().toISOString(),
-      status: body.status || 'pending',
-    };
+    const newOrder = await prisma.earmoldOrder.create({
+      data: {
+        id: body.id || `emo-${Date.now()}`,
+        orderNo,
+        clientId: body.clientId,
+        ear: body.ear || 'both',
+        shellType: body.shellType || 'acrylic',
+        color: body.color || 'clear',
+        ventType: body.ventType || 'none',
+        deviceBrand: body.deviceBrand || null,
+        deviceModel: body.deviceModel || null,
+        impressionDate: body.impressionDate || new Date().toISOString().split('T')[0],
+        impressionBy: body.impressionBy || 'أخصائي المعمل',
+        workshop: body.workshop || 'معمل الرياض المركزي',
+        expectedDate: body.expectedDate || new Date().toISOString().split('T')[0],
+        status: body.status || 'pending',
+        price: Number(body.price) || 0,
+        cost: Number(body.cost) || 0,
+        notes: body.notes || null,
+        invoiceId: body.invoiceId || null,
+        createdAt: body.createdAt || new Date().toISOString(),
+      },
+    });
 
-    db.earmoldOrders.unshift(newOrder);
-    writeDb(db);
+    const client = await prisma.client.findUnique({
+      where: { id: newOrder.clientId },
+      select: { nameAr: true },
+    });
 
-    const client = db.clients.find((c) => c.id === newOrder.clientId);
-    logAudit(
+    await logAudit(
       'CREATE_EARMOLD_ORDER',
       'EARMOLD_ORDER',
       newOrder.id,
@@ -59,6 +85,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ order: newOrder });
   } catch (error) {
+    console.error('Error creating earmold order:', error);
     return NextResponse.json({ error: 'Failed to create earmold order' }, { status: 500 });
   }
 }

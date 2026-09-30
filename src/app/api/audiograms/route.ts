@@ -1,24 +1,28 @@
 import { NextResponse } from 'next/server';
-import { readDb, writeDb, logAudit } from '@/lib/db';
-import { Audiogram } from '@/types';
+import { prisma, mapAudiogram, logAudit } from '@/lib/db';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const clientId = searchParams.get('clientId');
-  const db = readDb();
+  try {
+    const { searchParams } = new URL(request.url);
+    const clientId = searchParams.get('clientId');
 
-  let audiograms = db.audiograms;
-  if (clientId) {
-    audiograms = audiograms.filter((a) => a.clientId === clientId);
+    const rawAudiograms = await prisma.audiogram.findMany({
+      where: clientId ? { clientId } : undefined,
+      orderBy: { date: 'desc' },
+    });
+
+    return NextResponse.json({
+      audiograms: rawAudiograms.map(mapAudiogram),
+    });
+  } catch (error) {
+    console.error('Error fetching audiograms:', error);
+    return NextResponse.json({ error: 'Failed to fetch audiograms' }, { status: 500 });
   }
-
-  return NextResponse.json({ audiograms });
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const db = readDb();
 
     // Calculate PTA (500, 1000, 2000 Hz)
     const calcPta = (air: Record<number, number | null>) => {
@@ -28,23 +32,46 @@ export async function POST(request: Request) {
       return Number(((v500 + v1000 + v2000) / 3).toFixed(1));
     };
 
-    const ptaLeft = body.ptaLeft !== undefined ? body.ptaLeft : calcPta(body.leftAir || {});
-    const ptaRight = body.ptaRight !== undefined ? body.ptaRight : calcPta(body.rightAir || {});
+    const leftAirObj = body.leftAir || {};
+    const rightAirObj = body.rightAir || {};
+    const leftBoneObj = body.leftBone || {};
+    const rightBoneObj = body.rightBone || {};
 
-    const newAudiogram: Audiogram = {
-      ...body,
-      id: `aud-${Date.now()}`,
-      date: body.date || new Date().toISOString().split('T')[0],
-      frequencies: [125, 250, 500, 1000, 2000, 4000, 8000],
-      ptaLeft,
-      ptaRight,
-    };
+    const ptaLeft = body.ptaLeft !== undefined ? Number(body.ptaLeft) : calcPta(leftAirObj);
+    const ptaRight = body.ptaRight !== undefined ? Number(body.ptaRight) : calcPta(rightAirObj);
 
-    db.audiograms.unshift(newAudiogram);
-    writeDb(db);
+    const id = body.id || `aud-${Date.now()}`;
+    const date = body.date || new Date().toISOString().split('T')[0];
+    const frequencies = body.frequencies || [125, 250, 500, 1000, 2000, 4000, 8000];
 
-    const client = db.clients.find((c) => c.id === newAudiogram.clientId);
-    logAudit(
+    const created = await prisma.audiogram.create({
+      data: {
+        id,
+        clientId: body.clientId,
+        date,
+        audiologistName: body.audiologistName || 'أخصائي السمعيات',
+        testType: body.testType || 'PTA Diagnostic',
+        frequencies: JSON.stringify(frequencies),
+        leftAir: JSON.stringify(leftAirObj),
+        rightAir: JSON.stringify(rightAirObj),
+        leftBone: JSON.stringify(leftBoneObj),
+        rightBone: JSON.stringify(rightBoneObj),
+        ptaLeft,
+        ptaRight,
+        sdsLeft: Number(body.sdsLeft) || 100,
+        sdsRight: Number(body.sdsRight) || 100,
+        notes: body.notes || null,
+      },
+    });
+
+    const newAudiogram = mapAudiogram(created);
+
+    const client = await prisma.client.findUnique({
+      where: { id: newAudiogram.clientId },
+      select: { nameAr: true },
+    });
+
+    await logAudit(
       'CREATE_AUDIOGRAM',
       'AUDIOGRAM',
       newAudiogram.id,
@@ -53,6 +80,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ audiogram: newAudiogram });
   } catch (error) {
+    console.error('Error saving audiogram:', error);
     return NextResponse.json({ error: 'Failed to save audiogram' }, { status: 500 });
   }
 }
