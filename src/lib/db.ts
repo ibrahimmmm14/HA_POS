@@ -2,12 +2,12 @@
  * HA_POS Prisma Database Client & Helper Utilities
  * 
  * This module replaces the previous file-based JSON database engine.
- * All data is now stored in a SQLite database managed by Prisma ORM.
+ * All data is stored in Netlify Database (managed Postgres) via Prisma ORM.
  * 
  * Key design decisions:
  * - A singleton PrismaClient is exported for use across API routes.
  * - Complex nested fields (audiogram readings, invoice lines, etc.) are stored
- *   as JSON strings in SQLite and parsed/serialized by helper functions here.
+ *   as JSON strings in text columns and parsed/serialized by helper functions here.
  * - The `logAudit()` helper remains API-compatible with existing routes.
  */
 
@@ -50,7 +50,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // ─── JSON Serialization Helpers ───────────────────────────────────────────
-// SQLite stores JSON as strings. These helpers handle parsing/serializing
+// JSON fields are stored as text strings. These helpers handle parsing/serializing
 // the fields that contain complex nested objects.
 
 /** Parse a JSON string field, returning a default if null/invalid */
