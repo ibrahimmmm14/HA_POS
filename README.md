@@ -113,7 +113,7 @@ graph TD
     end
 
     subgraph DataLayer [Storage & Compliance]
-        SQLiteDB[(Prisma ORM & SQLite: prisma/dev.db)]
+        SQLiteDB[(Prisma ORM & PostgreSQL)]
         ZatcaQR[ZATCA TLV Base64 QR Generator]
         SeedData[Prisma Seed Script: prisma/seed.ts]
     end
@@ -186,7 +186,7 @@ HA_POS/
 - **Language**: [TypeScript 5](https://www.typescriptlang.org/)
 - **UI & Styling**: [Tailwind CSS 3](https://tailwindcss.com/), [PostCSS](https://postcss.org/), [Lucide React](https://lucide.dev/) (Icons)
 - **State & Context**: React Context API for Language (AR/EN RTL/LTR) and Branch Selection
-- **Database & ORM**: [Prisma ORM 6](https://www.prisma.io/) with local **SQLite** database (`prisma/dev.db`) — type-safe models, automated migrations, and seed scripts
+- **Database & ORM**: [Prisma ORM 6](https://www.prisma.io/) with **PostgreSQL** database — type-safe models, automated migrations, and seed scripts
 - **Standards & Regulations**: Saudi ZATCA E-Invoicing TLV QR Code generation
 
 ---
@@ -295,10 +295,11 @@ The database (`data/db.json`) is automatically initialized on the first run with
 
 ## 💾 Database Architecture & Data Storage
 
-The application uses **Prisma ORM 6** with an embedded **SQLite** database located at:
+The application uses **Prisma ORM 6** with a **PostgreSQL** database (Neon, Supabase, Railway, or local). Set the connection string in `.env` (copy `.env.example`):
 ```text
-prisma/dev.db
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require"
 ```
+On Netlify, add `DATABASE_URL` under Site settings → Environment variables; `netlify.toml` runs `prisma migrate deploy` during the build.
 
 ### Database Schema Models
 Defined in `prisma/schema.prisma`:
@@ -317,7 +318,7 @@ Defined in `prisma/schema.prisma`:
    ```bash
    npm run db:migrate
    ```
-   This executes `prisma migrate dev --name init` which creates `prisma/dev.db` and applies all migrations from `prisma/migrations/`.
+   This applies all migrations from `prisma/migrations/` to the database in `DATABASE_URL`.
 
 2. **Seed Initial Data**:
    ```bash
@@ -345,8 +346,8 @@ Defined in `prisma/schema.prisma`:
 | `npm run build` | Builds the optimized production bundle |
 | `npm run start` | Runs the compiled production build |
 | `npm run lint` | Runs ESLint to check for code quality and syntax issues |
-| `npm run db:migrate` | Runs Prisma schema migration to create or update the SQLite database schema |
-| `npm run db:seed` | Populates the SQLite database with initial demo & master dataset |
+| `npm run db:migrate` | Runs Prisma schema migration to create or update the database schema |
+| `npm run db:seed` | Populates the database with initial demo & master dataset |
 | `npm run db:studio` | Launches visual Prisma Studio GUI on `http://localhost:5555` to inspect and edit database records |
 
 ---

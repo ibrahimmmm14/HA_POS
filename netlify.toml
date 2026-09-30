@@ -1,0 +1,3 @@
+[build]
+  # Apply DB migrations, then build. DATABASE_URL must be set in Netlify env vars.
+  command = "npx prisma migrate deploy && npm run build"
