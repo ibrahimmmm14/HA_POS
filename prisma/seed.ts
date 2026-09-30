@@ -1,7 +1,7 @@
 /**
  * Prisma Seed Script for HA_POS
  * 
- * This script seeds the SQLite database with all initial data from seedData.ts
+ * This script seeds the Postgres database with all initial data from seedData.ts
  * Run with: npx prisma db seed
  * (or automatically during: npx prisma migrate dev)
  */
