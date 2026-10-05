@@ -10,6 +10,7 @@ export const ar = {
   newEarmold: 'طلب قالب جديد',
   repairs: 'صيانة الأجهزة',
   newRepair: 'استلام جهاز للصيانة',
+  records: 'سجل البيانات المحفوظة',
   clients: 'المرضى والعملاء',
   newClient: 'مريض جديد',
   audiogram: 'مخطط السمع',

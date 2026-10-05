@@ -10,6 +10,7 @@ export const en = {
   newEarmold: 'New Earmold Order',
   repairs: 'Device Repairs',
   newRepair: 'New Repair Ticket',
+  records: 'Database Records',
   clients: 'Clients / Patients',
   newClient: 'New Patient',
   audiogram: 'Audiogram',
