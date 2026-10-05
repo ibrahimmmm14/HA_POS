@@ -7,6 +7,8 @@ import { prisma } from '@/lib/db';
  *   GET /api/records?table=clients  → newest rows of one table
  */
 
+export const dynamic = 'force-dynamic';
+
 const LIMIT = 200;
 
 // Only these tables can be browsed; each maps to its Prisma query (newest first where a date exists)
