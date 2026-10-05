@@ -18,6 +18,8 @@ import {
   BarChart3,
   Settings,
   Activity,
+  Wrench,
+  Database,
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -50,6 +52,12 @@ export function Sidebar() {
       label: t.earmolds,
       icon: Scissors,
       active: pathname.startsWith('/earmolds'),
+    },
+    {
+      href: '/repairs',
+      label: t.repairs,
+      icon: Wrench,
+      active: pathname.startsWith('/repairs'),
     },
     {
       href: '/clients',
@@ -92,6 +100,12 @@ export function Sidebar() {
       label: t.reports,
       icon: BarChart3,
       active: pathname.startsWith('/reports'),
+    },
+    {
+      href: '/records',
+      label: t.records,
+      icon: Database,
+      active: pathname.startsWith('/records'),
     },
     {
       href: '/settings',
