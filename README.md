@@ -348,6 +348,11 @@ Defined in `prisma/schema.prisma`:
 | `npm run db:migrate` | Runs Prisma schema migration to create or update the SQLite database schema |
 | `npm run db:seed` | Populates the SQLite database with initial demo & master dataset |
 | `npm run db:studio` | Launches visual Prisma Studio GUI on `http://localhost:5555` to inspect and edit database records |
+| `npm run db:deploy` | Applies pending migrations to an existing database (use after pulling updates) |
+| `npm run db:backup` | Verified snapshot of the live database into `backups/` (see [docs/BACKUP_AND_QUALITY_CONTROL.md](docs/BACKUP_AND_QUALITY_CONTROL.md)) |
+| `npm run db:restore -- <file>` | Restores a backup after an integrity check, keeping a copy of the current database |
+| `npm run qc` | Read-only data quality report (client files, invoices, serials, earmolds, repairs) |
+| `npm run typecheck` | TypeScript check without building |
 
 ---
 

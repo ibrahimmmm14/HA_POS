@@ -6,7 +6,8 @@ import { useParams } from 'next/navigation';
 import { useLanguage } from '@/components/common/LanguageContext';
 import { AudiogramChart } from '@/components/clinical/AudiogramChart';
 import { AudiogramForm } from '@/components/clinical/AudiogramForm';
-import { Client, Audiogram, EarmoldOrder, Invoice, SerialUnit } from '@/types';
+import { Client, Audiogram, EarmoldOrder, Invoice, SerialUnit, RepairTicket } from '@/types';
+import { REPAIR_STATUS_LABELS, REPAIR_STATUS_COLORS } from '@/lib/repairs';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   ArrowLeft,
@@ -21,6 +22,7 @@ import {
   Plus,
   Clock,
   CheckCircle2,
+  Wrench,
 } from 'lucide-react';
 
 export default function ClientProfilePage() {
@@ -33,9 +35,10 @@ export default function ClientProfilePage() {
     earmoldOrders: EarmoldOrder[];
     invoices: Invoice[];
     devices: SerialUnit[];
+    repairTickets: RepairTicket[];
   } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'audiograms' | 'devices' | 'earmolds' | 'invoices'>('audiograms');
+  const [activeTab, setActiveTab] = useState<'audiograms' | 'devices' | 'earmolds' | 'repairs' | 'invoices'>('audiograms');
   const [showNewAudiogramForm, setShowNewAudiogramForm] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -71,6 +74,7 @@ export default function ClientProfilePage() {
   }
 
   const { client, audiograms, earmoldOrders, invoices, devices } = data;
+  const repairTickets = data.repairTickets || [];
 
   return (
     <div className="space-y-6">
@@ -122,6 +126,12 @@ export default function ClientProfilePage() {
             >
               {lang === 'ar' ? '+ طلب قالب' : '+ Custom Earmold'}
             </Link>
+            <Link
+              href={`/repairs?clientId=${client.id}`}
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow-sm transition"
+            >
+              {lang === 'ar' ? '+ استلام للصيانة' : '+ Repair'}
+            </Link>
           </div>
         </div>
 
@@ -157,6 +167,11 @@ export default function ClientProfilePage() {
             id: 'earmolds',
             label: `${t.earmoldOrders} (${earmoldOrders.length})`,
             icon: Scissors,
+          },
+          {
+            id: 'repairs',
+            label: `${t.repairs} (${repairTickets.length})`,
+            icon: Wrench,
           },
           {
             id: 'invoices',
@@ -376,6 +391,57 @@ export default function ClientProfilePage() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Device Repairs */}
+      {activeTab === 'repairs' && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-start">
+              <thead className="bg-slate-900 text-white font-semibold">
+                <tr>
+                  <th className="p-3 text-start">{lang === 'ar' ? 'رقم التذكرة' : 'Ticket #'}</th>
+                  <th className="p-3 text-start">{lang === 'ar' ? 'الجهاز' : 'Device'}</th>
+                  <th className="p-3 text-start">{lang === 'ar' ? 'العطل' : 'Fault'}</th>
+                  <th className="p-3 text-center">{lang === 'ar' ? 'الاستلام' : 'Received'}</th>
+                  <th className="p-3 text-center">{t.status}</th>
+                  <th className="p-3 text-center">{t.actions}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {repairTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-gray-400">
+                      {t.noData}
+                    </td>
+                  </tr>
+                ) : (
+                  repairTickets.map((r) => (
+                    <tr key={r.id} className="hover:bg-orange-50/20">
+                      <td className="p-3 font-mono font-bold text-orange-700">{r.ticketNo}</td>
+                      <td className="p-3">
+                        {r.deviceBrand} {r.deviceModel}
+                        <div className="text-[10px] text-gray-500 font-mono">{r.serialNumber || '—'}</div>
+                      </td>
+                      <td className="p-3 text-gray-600 truncate max-w-[220px]">{r.issue}</td>
+                      <td className="p-3 text-center font-mono">{r.receivedAt}</td>
+                      <td className="p-3 text-center">
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${REPAIR_STATUS_COLORS[r.status]}`}>
+                          {REPAIR_STATUS_LABELS[r.status]?.[lang === 'ar' ? 'ar' : 'en'] || r.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <Link href={`/repairs/${r.id}`} className="text-blue-600 hover:underline font-bold">
+                          {lang === 'ar' ? 'عرض' : 'View'}
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

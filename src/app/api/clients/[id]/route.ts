@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
-    const [rawAudiograms, earmoldOrders, rawInvoices, devices] = await Promise.all([
+    const [rawAudiograms, earmoldOrders, rawInvoices, devices, repairTickets] = await Promise.all([
       prisma.audiogram.findMany({
         where: { clientId: client.id },
         orderBy: { date: 'desc' },
@@ -30,6 +30,10 @@ export async function GET(
       prisma.serialUnit.findMany({
         where: { clientId: client.id },
       }),
+      prisma.repairTicket.findMany({
+        where: { clientId: client.id },
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     return NextResponse.json({
@@ -38,6 +42,7 @@ export async function GET(
       earmoldOrders,
       invoices: rawInvoices.map(mapInvoice),
       devices,
+      repairTickets,
     });
   } catch (error) {
     console.error('Error fetching client details:', error);
@@ -59,6 +64,7 @@ export async function PUT(
       earmoldOrders: _earmoldOrders,
       invoices: _invoices,
       devices: _devices,
+      repairTickets: _repairTickets,
       ...updateData
     } = body;
 

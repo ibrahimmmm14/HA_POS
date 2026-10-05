@@ -8,6 +8,8 @@ export const en = {
   newInvoice: 'New Invoice',
   earmolds: 'Earmold Orders (Lab)',
   newEarmold: 'New Earmold Order',
+  repairs: 'Device Repairs',
+  newRepair: 'New Repair Ticket',
   clients: 'Clients / Patients',
   newClient: 'New Patient',
   audiogram: 'Audiogram',

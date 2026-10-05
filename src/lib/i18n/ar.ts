@@ -8,6 +8,8 @@ export const ar = {
   newInvoice: 'فاتورة جديدة',
   earmolds: 'طلبات القوالب (المعمل)',
   newEarmold: 'طلب قالب جديد',
+  repairs: 'صيانة الأجهزة',
+  newRepair: 'استلام جهاز للصيانة',
   clients: 'المرضى والعملاء',
   newClient: 'مريض جديد',
   audiogram: 'مخطط السمع',
