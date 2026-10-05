@@ -33,5 +33,3 @@ Thumbs.db
 
 # database backups and local data (contain patient records)
 /backups/
-prisma/*.before-restore-*.db
-prisma/*.db-journal

@@ -1,31 +1,43 @@
 # Client Data, Backups & Quality Control
 
-HA_POS keeps every client file, audiogram, invoice, device serial and repair ticket in a
-single SQLite file (`prisma/dev.db`, set by `DATABASE_URL` in `.env`). If that file is lost
-or corrupted, all patient and sales history is gone. This guide covers how to protect it.
+HA_POS keeps every client file, audiogram, invoice, device serial and repair ticket in
+**Netlify Database**, a managed Postgres database attached to the `ha-pos` Netlify site.
+This guide covers where that data lives, how to keep your own copies, and how to check it.
 
 ## 1. Where the data lives
 
 | What | Where |
 | --- | --- |
-| Live database | `prisma/dev.db` (path comes from `DATABASE_URL`) |
-| Schema / migrations | `prisma/schema.prisma`, `prisma/migrations/` |
-| Backups | `backups/ha_pos-YYYYMMDD-HHMMSS.db` (git-ignored) |
+| Live database | Netlify Database (Postgres), shown in the Netlify dashboard under the site's **Database** tab |
+| Connection | `NETLIFY_DB_URL`, injected by Netlify in deploys and by `npx netlify dev` locally. Never commit it |
+| Tables & demo data | `netlify/database/migrations/*.sql`, applied by Netlify on each deploy |
+| Your backup copies | `backups/ha_pos-YYYYMMDD-HHMMSS.json.gz` (git-ignored) |
 
 The database holds personal health data (national IDs, phone numbers, audiograms).
-**Never commit a database that contains real clients to git.** The `prisma/dev.db` in the
-repository today holds demo seed data only; see "Moving off the committed database" below.
+**Never commit a connection string or a backup file to git.** The GitHub repository is public.
 
-## 2. Daily backup
+To see the stored rows: open **Database Records** in the app's sidebar, or the Database tab
+of the site in Netlify.
+
+## 2. Backups
+
+Two layers:
+
+1. **Provider backups.** Netlify Database runs on Neon, which keeps history and can restore the
+   whole database to an earlier point in time from its console. Check the retention period
+   on your plan and use this first after a serious mistake.
+2. **Your own copy** (`npm run db:backup`). It doesn't depend on Netlify or Neon being
+   reachable and it isn't affected by an account problem.
 
 ```bash
-npm run db:backup
+npx netlify dev:exec npm run db:backup
 ```
 
-- Uses SQLite `VACUUM INTO`, which produces a consistent copy even while the app is running.
-- Opens the copy and runs `PRAGMA integrity_check`; the command fails (exit code 1) if the
-  copy is damaged, so a scheduler can alert.
-- Keeps the newest 30 copies. Change with `BACKUP_KEEP=60`; change the folder with
+- `netlify dev:exec` injects `NETLIFY_DB_URL` (run `npx netlify link` once first). You can
+  also set `NETLIFY_DB_URL` yourself.
+- Exports every table in one consistent read to a gzipped JSON file, then reads the file
+  back and checks the row counts. Fails with exit code 1 on any problem, so a scheduler can alert.
+- Keeps the newest 30 files. Change with `BACKUP_KEEP=60`; change the folder with
   `BACKUP_DIR=D:\HA_POS_Backups`.
 
 ### Schedule it
@@ -33,43 +45,38 @@ npm run db:backup
 **Windows (Task Scheduler)**: create a daily task at closing time (e.g. 23:00):
 
 - Program: `cmd.exe`
-- Arguments: `/c cd /d C:\ha_pos && npm run db:backup >> backups\backup.log 2>&1`
+- Arguments: `/c cd /d C:\ha_pos && npx netlify dev:exec npm run db:backup >> backups\backup.log 2>&1`
 
 **Linux / macOS (cron)**:
 
 ```cron
-0 23 * * * cd /opt/ha_pos && npm run db:backup >> backups/backup.log 2>&1
+0 23 * * * cd /opt/ha_pos && npx netlify dev:exec npm run db:backup >> backups/backup.log 2>&1
 ```
 
-### Keep a copy off the machine (3-2-1 rule)
-
-Keep **3** copies, on **2** different media, **1** off-site. A backup on the same disk as the
-database does not survive a dead disk, theft, fire or ransomware. Point `BACKUP_DIR` at, or
-sync `backups/` to, at least one of:
-
-- An encrypted cloud folder (OneDrive / Google Drive for Business).
-- An external USB drive rotated weekly and kept off-site (e.g. at the main branch).
-
-Backups contain patient data: keep the destination access-restricted and encrypted
-(BitLocker for USB drives, the business tier of the cloud provider).
+Keep `backups/` on an encrypted drive or an access-restricted business cloud folder
+(OneDrive / Google Drive for Business), and rotate a USB copy off-site weekly. These files
+contain patient data.
 
 ## 3. Restore
 
-1. Stop the app.
-2. `npm run db:restore -- backups/ha_pos-20261005-230000.db`
-   - Checks the backup's integrity first and refuses a damaged file.
-   - Saves the current database as `prisma/dev.before-restore-<time>.db` so the restore can be undone.
-3. `npm run db:deploy` (applies any newer migrations to the restored copy).
-4. Start the app and open a few recent client files to confirm.
+```bash
+npx netlify dev:exec npm run db:restore -- backups/ha_pos-20261005-230000.json.gz
+```
 
-**Test a restore once a month** on a spare PC or a copy of the folder. A backup that has
+- Adds back every row in the backup that is missing from the database, in one transaction.
+- **Never changes or deletes an existing row**, so it is safe on the live database (to
+  recover records deleted by mistake) and on a fresh one (to rebuild everything).
+- To roll the whole database back to an earlier state instead, use the provider's
+  point-in-time restore (section 2).
+
+**Test a restore once a month** into a spare database or a database branch. A backup that has
 never been restored is not known to work.
 
 ## 4. Data quality control
 
 ```bash
-npm run qc            # human-readable report
-QC_JSON=1 npm run qc  # JSON, for a dashboard or log
+npx netlify dev:exec npm run qc            # human-readable report
+QC_JSON=1 npx netlify dev:exec npm run qc  # JSON, for a dashboard or log
 ```
 
 The check is read-only and exits 1 if it finds any **ERROR**. It covers:
@@ -84,7 +91,7 @@ The check is read-only and exits 1 if it finds any **ERROR**. It covers:
 
 Suggested routine:
 
-- **Daily** (scheduled right after the backup): `npm run qc`; the branch manager reviews errors.
+- **Daily** (scheduled right after the backup): run `qc`; the branch manager reviews errors.
 - **Weekly**: front desk fixes WARN items for their branch (missing IDs, phone formats).
 - **Monthly**: review repeat repairs per brand/model with the supplier; test a restore.
 
@@ -102,14 +109,3 @@ client profile):
 
 Every status change and note is stored in the ticket's history with time and user, and
 earlier repairs of the same serial number are listed on the ticket.
-
-## 6. Moving off the committed database
-
-`prisma/dev.db` is currently tracked by git. Before entering real client data:
-
-1. Take a backup: `npm run db:backup`.
-2. Point the live database outside the repository, e.g. in `.env`:
-   `DATABASE_URL="file:C:/HA_POS_Data/ha_pos.db"`, copy your existing `dev.db` there,
-   and run `npm run db:deploy`.
-3. Then the repository can stop tracking `prisma/dev.db` (`git rm --cached prisma/dev.db`
-   and add it to `.gitignore`) without risking live data.

@@ -2,7 +2,7 @@
 /**
  * HA_POS data quality-control check.
  *
- *   npm run qc
+ *   npx netlify dev:exec npm run qc
  *
  * Read-only. Scans client files, invoices, serialised devices, earmold orders and
  * repair tickets for missing or inconsistent data, and prints a report.
@@ -10,9 +10,10 @@
  * Set QC_JSON=1 for machine-readable output.
  */
 import { PrismaClient } from '@prisma/client';
-import { resolveDbPath } from './db-path.mjs';
+import { requireDatabaseUrl } from './tables.mjs';
 
-const prisma = new PrismaClient({ datasourceUrl: `file:${resolveDbPath()}` });
+requireDatabaseUrl();
+const prisma = new PrismaClient();
 const today = new Date().toISOString().split('T')[0];
 const findings = [];
 const add = (level, area, ref, message) => findings.push({ level, area, ref, message });
