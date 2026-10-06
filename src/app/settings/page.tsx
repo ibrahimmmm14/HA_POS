@@ -12,6 +12,7 @@ import {
   Hospital as HospIcon,
   CheckCircle2,
   PlusCircle,
+  Pencil,
 } from 'lucide-react';
 
 type AddKind = 'branch' | 'hospital' | 'doctor' | 'insurance';
@@ -25,10 +26,15 @@ interface FieldDef {
   dir?: 'ltr';
 }
 
-const FORMS: Record<AddKind, { titleAr: string; titleEn: string; endpoint: string; fields: FieldDef[] }> = {
+const FORMS: Record<
+  AddKind,
+  { titleAr: string; titleEn: string; editTitleAr: string; editTitleEn: string; endpoint: string; fields: FieldDef[] }
+> = {
   branch: {
     titleAr: 'إضافة فرع جديد',
     titleEn: 'Add New Branch',
+    editTitleAr: 'تعديل بيانات الفرع',
+    editTitleEn: 'Edit Branch',
     endpoint: '/api/branches',
     fields: [
       { name: 'code', labelAr: 'رمز الفرع', labelEn: 'Branch code', required: true, dir: 'ltr' },
@@ -43,6 +49,8 @@ const FORMS: Record<AddKind, { titleAr: string; titleEn: string; endpoint: strin
   hospital: {
     titleAr: 'إضافة مستشفى جديد',
     titleEn: 'Add New Hospital',
+    editTitleAr: 'تعديل بيانات المستشفى',
+    editTitleEn: 'Edit Hospital',
     endpoint: '/api/hospitals',
     fields: [
       { name: 'nameAr', labelAr: 'اسم المستشفى (عربي)', labelEn: 'Hospital name (Arabic)', required: true },
@@ -55,6 +63,8 @@ const FORMS: Record<AddKind, { titleAr: string; titleEn: string; endpoint: strin
   doctor: {
     titleAr: 'إضافة طبيب جديد',
     titleEn: 'Add New Doctor',
+    editTitleAr: 'تعديل بيانات الطبيب',
+    editTitleEn: 'Edit Doctor',
     endpoint: '/api/doctors',
     fields: [
       { name: 'nameAr', labelAr: 'اسم الطبيب (عربي)', labelEn: 'Doctor name (Arabic)', required: true },
@@ -68,6 +78,8 @@ const FORMS: Record<AddKind, { titleAr: string; titleEn: string; endpoint: strin
   insurance: {
     titleAr: 'إضافة شركة تأمين جديدة',
     titleEn: 'Add New Insurance Company',
+    editTitleAr: 'تعديل بيانات شركة التأمين',
+    editTitleEn: 'Edit Insurance Company',
     endpoint: '/api/insurance',
     fields: [
       { name: 'nameAr', labelAr: 'اسم الشركة (عربي)', labelEn: 'Company name (Arabic)', required: true },
@@ -91,6 +103,7 @@ export default function SettingsPage() {
 
   // Add dialog state
   const [addKind, setAddKind] = useState<AddKind | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
@@ -110,6 +123,20 @@ export default function SettingsPage() {
 
   const openAdd = (kind: AddKind) => {
     setForm({});
+    setEditId(null);
+    setFormError('');
+    setAddKind(kind);
+  };
+
+  // Open the same dialog pre-filled with an existing record
+  const openEdit = (kind: AddKind, record: Record<string, any>) => {
+    const values: Record<string, string> = {};
+    for (const f of FORMS[kind].fields) {
+      const v = record[f.name];
+      values[f.name] = typeof v === 'boolean' ? (v ? 'true' : '') : v === null || v === undefined ? '' : String(v);
+    }
+    setForm(values);
+    setEditId(record.id);
     setFormError('');
     setAddKind(kind);
   };
@@ -121,8 +148,8 @@ export default function SettingsPage() {
     setSaving(true);
     setFormError('');
     try {
-      const res = await fetch(FORMS[addKind].endpoint, {
-        method: 'POST',
+      const res = await fetch(editId ? `${FORMS[addKind].endpoint}/${editId}` : FORMS[addKind].endpoint, {
+        method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
@@ -135,6 +162,7 @@ export default function SettingsPage() {
         return;
       }
       setAddKind(null);
+      setEditId(null);
       if (addKind === 'branch') await refreshBranches();
       else await loadMasterData();
     } catch (err) {
@@ -152,6 +180,16 @@ export default function SettingsPage() {
     >
       <PlusCircle className="w-4 h-4" />
       <span>{lang === 'ar' ? labelAr : labelEn}</span>
+    </button>
+  );
+
+  const editButton = (kind: AddKind, record: Record<string, any>) => (
+    <button
+      onClick={() => openEdit(kind, record)}
+      className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition inline-flex"
+      title={lang === 'ar' ? 'تعديل' : 'Edit'}
+    >
+      <Pencil className="w-4 h-4" />
     </button>
   );
 
@@ -212,8 +250,11 @@ export default function SettingsPage() {
                 <span className="font-mono font-bold text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">
                   {b.code}
                 </span>
-                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                  نشط
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                    نشط
+                  </span>
+                  {editButton('branch', b)}
                 </span>
               </div>
               <div>
@@ -247,6 +288,7 @@ export default function SettingsPage() {
                   <th className="p-3 text-start">المستشفى</th>
                   <th className="p-3 text-start">رقم التواصل</th>
                   <th className="p-3 text-center">نسبة الإحالة</th>
+                  <th className="p-3 text-center w-16">{lang === 'ar' ? 'تعديل' : 'Edit'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -261,6 +303,7 @@ export default function SettingsPage() {
                       <td className="p-3 text-center font-mono font-bold text-blue-700">
                         {d.commissionPercent}%
                       </td>
+                      <td className="p-3 text-center">{editButton('doctor', d)}</td>
                     </tr>
                   );
                 })}
@@ -284,6 +327,7 @@ export default function SettingsPage() {
                   <th className="p-3 text-start">{lang === 'ar' ? 'المدينة' : 'City'}</th>
                   <th className="p-3 text-start">{lang === 'ar' ? 'الهاتف' : 'Phone'}</th>
                   <th className="p-3 text-center">{lang === 'ar' ? 'عدد الأطباء' : 'Doctors'}</th>
+                  <th className="p-3 text-center w-16">{lang === 'ar' ? 'تعديل' : 'Edit'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -296,6 +340,7 @@ export default function SettingsPage() {
                     <td className="p-3 text-center font-mono">
                       {doctors.filter((d) => d.hospitalId === h.id).length}
                     </td>
+                    <td className="p-3 text-center">{editButton('hospital', h)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -319,7 +364,10 @@ export default function SettingsPage() {
                 <span className="font-mono font-bold text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
                   {ic.code}
                 </span>
-                <span className="text-[10px] text-gray-500 font-mono">هاتف: {ic.phone}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 font-mono">هاتف: {ic.phone}</span>
+                  {editButton('insurance', ic)}
+                </span>
               </div>
               <h3 className="font-bold text-sm text-gray-900">{ic.nameAr}</h3>
               <div className="pt-2 border-t border-gray-100 space-y-1 text-gray-600">
@@ -379,7 +427,9 @@ export default function SettingsPage() {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
               <h3 className="font-bold text-base text-gray-900">
-                {lang === 'ar' ? FORMS[addKind].titleAr : FORMS[addKind].titleEn}
+                {editId
+                  ? lang === 'ar' ? FORMS[addKind].editTitleAr : FORMS[addKind].editTitleEn
+                  : lang === 'ar' ? FORMS[addKind].titleAr : FORMS[addKind].titleEn}
               </h3>
               <button
                 onClick={() => setAddKind(null)}

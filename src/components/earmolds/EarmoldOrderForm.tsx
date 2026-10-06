@@ -6,7 +6,8 @@ import { useLanguage } from '@/components/common/LanguageContext';
 import { Client, EarmoldShellType, EarmoldVentType } from '@/types';
 import { Scissors, Save, ArrowLeft } from 'lucide-react';
 
-export function EarmoldOrderForm() {
+export function EarmoldOrderForm({ orderId }: { orderId?: string }) {
+  const isEdit = !!orderId;
   const router = useRouter();
   const { lang, t } = useLanguage();
 
@@ -30,6 +31,8 @@ export function EarmoldOrderForm() {
   const [cost, setCost] = useState<number>(440);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
+  const [loadingOrder, setLoadingOrder] = useState(isEdit);
 
   useEffect(() => {
     fetch('/api/clients')
@@ -37,10 +40,37 @@ export function EarmoldOrderForm() {
       .then((data) => {
         if (data.clients) {
           setClients(data.clients);
-          if (data.clients.length > 0) setClientId(data.clients[0].id);
+          if (!isEdit && data.clients.length > 0) setClientId(data.clients[0].id);
         }
       });
-  }, []);
+  }, [isEdit]);
+
+  // Edit mode: load the existing order into the form
+  useEffect(() => {
+    if (!orderId) return;
+    fetch(`/api/earmolds/${orderId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const o = data.order;
+        if (!o) return;
+        setClientId(o.clientId);
+        setEar(o.ear);
+        setShellType(o.shellType);
+        setColor(o.color);
+        setVentType(o.ventType);
+        setDeviceBrand(o.deviceBrand || '');
+        setDeviceModel(o.deviceModel || '');
+        setImpressionDate(o.impressionDate);
+        setImpressionBy(o.impressionBy);
+        setWorkshop(o.workshop);
+        setExpectedDate(o.expectedDate);
+        setPrice(o.price);
+        setCost(o.cost);
+        setNotes(o.notes || '');
+        setLinkedInvoiceId(o.invoiceId || null);
+      })
+      .finally(() => setLoadingOrder(false));
+  }, [orderId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,8 +81,8 @@ export function EarmoldOrderForm() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/earmolds', {
-        method: 'POST',
+      const res = await fetch(isEdit ? `/api/earmolds/${orderId}` : '/api/earmolds', {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId,
@@ -69,13 +99,16 @@ export function EarmoldOrderForm() {
           price,
           cost,
           notes,
-          status: 'pending',
+          // keep the current status when editing
+          ...(isEdit ? {} : { status: 'pending' }),
         }),
       });
 
       const data = await res.json();
       if (res.ok) {
         router.push(`/earmolds/${data.order.id}`);
+      } else {
+        alert(lang === 'ar' ? 'تعذر حفظ الطلب' : 'Could not save the order');
       }
     } catch (e) {
       console.error(e);
@@ -94,7 +127,9 @@ export function EarmoldOrderForm() {
           </div>
           <div>
             <h2 className="text-xl font-black text-gray-900">
-              {lang === 'ar' ? 'طلب تصنيع قالب أذن / هيكل مخصص جديد' : 'New Custom Earmold / CIC Lab Order'}
+              {isEdit
+                ? lang === 'ar' ? 'تعديل طلب المعمل' : 'Edit Lab Order'
+                : lang === 'ar' ? 'طلب تصنيع قالب أذن / هيكل مخصص جديد' : 'New Custom Earmold / CIC Lab Order'}
             </h2>
             <p className="text-xs text-gray-500">
               {lang === 'ar'
@@ -105,14 +140,25 @@ export function EarmoldOrderForm() {
         </div>
 
         <button
-          onClick={() => router.push('/earmolds')}
+          onClick={() => router.push(isEdit ? `/earmolds/${orderId}` : '/earmolds')}
           className="text-xs font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 px-3 py-1.5 rounded-lg"
         >
           {t.cancel}
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+      {isEdit && linkedInvoiceId && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          {lang === 'ar'
+            ? 'تنبيه: هذا الطلب محوّل إلى فاتورة. تعديل السعر هنا لا يغيّر الفاتورة الصادرة.'
+            : 'Note: this order is already converted to an invoice. Changing the price here does not change that invoice.'}
+        </p>
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        className={`bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6 ${loadingOrder ? 'opacity-50 pointer-events-none' : ''}`}
+      >
         {/* Client & Dates */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div>
@@ -325,7 +371,13 @@ export function EarmoldOrderForm() {
             className="flex items-center gap-2 px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow-md transition disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            <span>{submitting ? t.loading : lang === 'ar' ? 'إصدار وطباعة طلب المعمل' : 'Create & Print Lab Order'}</span>
+            <span>
+              {submitting
+                ? t.loading
+                : isEdit
+                ? lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes'
+                : lang === 'ar' ? 'إصدار وطباعة طلب المعمل' : 'Create & Print Lab Order'}
+            </span>
           </button>
         </div>
       </form>

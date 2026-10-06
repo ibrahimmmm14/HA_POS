@@ -13,6 +13,7 @@ import {
   Clock,
   ArrowRight,
   Printer,
+  Pencil,
 } from 'lucide-react';
 
 export default function EarmoldsListPage() {
@@ -183,13 +184,22 @@ export default function EarmoldsListPage() {
                       </span>
                     </td>
                     <td className="p-3 text-center">
-                      <Link
-                        href={`/earmolds/${order.id}`}
-                        className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition inline-flex"
-                        title="عرض طلب المعمل"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Link>
+                      <div className="inline-flex items-center gap-1">
+                        <Link
+                          href={`/earmolds/${order.id}`}
+                          className="p-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition inline-flex"
+                          title="عرض طلب المعمل"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          href={`/earmolds/${order.id}/edit`}
+                          className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition inline-flex"
+                          title={lang === 'ar' ? 'تعديل الطلب' : 'Edit order'}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))
