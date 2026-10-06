@@ -293,6 +293,17 @@ The database (`data/db.json`) is automatically initialized on the first run with
 
 ---
 
+## 🔐 Users, Permissions & Finance Report
+
+The system requires sign-in. Administrators manage users, roles and per-user permissions from
+**Users & Permissions**, review the **Sign-in Log**, and the **Finance Report** shows sales, VAT, collections,
+receivables and profit for any period. See [docs/USERS_AND_ACCESS.md](docs/USERS_AND_ACCESS.md).
+
+> **After deploying this version**, open the site once and set the administrator password on the
+> first-time setup screen (optionally protect it first with a `SETUP_CODE` environment variable).
+
+---
+
 ## 💾 Database Architecture & Data Storage
 
 The application uses **Prisma ORM 6** with **Netlify Database** (managed Postgres). Netlify injects the

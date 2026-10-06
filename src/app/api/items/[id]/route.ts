@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapItem, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 // Update the prices of a single catalog item
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+async function PUTHandler(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
 
@@ -39,3 +42,5 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
   }
 }
+
+export const PUT = guarded(PUTHandler);

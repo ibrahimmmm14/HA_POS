@@ -12,18 +12,20 @@ import {
   Zap,
   Volume2,
   Bell,
+  LogOut,
 } from 'lucide-react';
+import { ROLES } from '@/lib/permissions';
 
 export function Header() {
   const { lang, toggleLang, t } = useLanguage();
   const {
-    branches,
+    selectableBranches,
     currentBranch,
     setCurrentBranchId,
     currentUser,
-    users,
-    setCurrentUserId,
+    logout,
   } = useBranch();
+  const role = ROLES.find((r) => r.key === currentUser.role);
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm print:hidden">
@@ -73,7 +75,7 @@ export function Header() {
               onChange={(e) => setCurrentBranchId(e.target.value)}
               className="bg-transparent text-gray-800 font-semibold focus:outline-none cursor-pointer pr-4"
             >
-              {branches.map((b) => (
+              {selectableBranches.map((b) => (
                 <option key={b.id} value={b.id}>
                   {lang === 'ar' ? b.nameAr : b.nameEn}
                 </option>
@@ -81,29 +83,27 @@ export function Header() {
             </select>
           </div>
 
-          {/* User & Role Switcher */}
-          <div className="relative flex items-center bg-blue-50/70 border border-blue-200 rounded-lg px-2.5 py-1 text-xs">
+          {/* Signed-in user */}
+          <Link
+            href="/account"
+            className="flex items-center bg-blue-50/70 border border-blue-200 rounded-lg px-2.5 py-1.5 text-xs hover:bg-blue-100/70 transition"
+            title={lang === 'ar' ? 'حسابي وتغيير كلمة المرور' : 'My account & password'}
+          >
             <User className="w-4 h-4 text-blue-600 mx-1.5 flex-shrink-0" />
-            <select
-              value={currentUser.id}
-              onChange={(e) => setCurrentUserId(e.target.value)}
-              className="bg-transparent text-blue-900 font-semibold focus:outline-none cursor-pointer pr-4"
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {lang === 'ar' ? u.nameAr : u.nameEn} (
-                  {u.role === 'super_admin'
-                    ? t.roleSuperAdmin
-                    : u.role === 'branch_manager'
-                    ? t.roleBranchManager
-                    : u.role === 'cashier'
-                    ? t.roleCashier
-                    : t.roleAudiologist}
-                  )
-                </option>
-              ))}
-            </select>
-          </div>
+            <span className="text-blue-900 font-semibold">
+              {lang === 'ar' ? currentUser.nameAr : currentUser.nameEn || currentUser.nameAr}
+              {role && <span className="text-blue-600 font-normal"> ({lang === 'ar' ? role.ar : role.en})</span>}
+            </span>
+          </Link>
+
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition"
+            title={lang === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden lg:inline">{lang === 'ar' ? 'خروج' : 'Sign out'}</span>
+          </button>
 
           {/* Language Toggle Button */}
           <button

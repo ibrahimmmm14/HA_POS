@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 const TEXT_FIELDS = ['code', 'nameAr', 'nameEn', 'cityAr', 'cityEn', 'addressAr', 'addressEn', 'phone', 'taxNumber'] as const;
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+async function PUTHandler(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
 
@@ -25,3 +28,5 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ error: 'Failed to update branch' }, { status: 500 });
   }
 }
+
+export const PUT = guarded(PUTHandler);

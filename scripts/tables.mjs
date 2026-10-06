@@ -17,6 +17,7 @@ export const TABLES = [
   'messageTemplate',
   'messageLog',
   'auditLog',
+  'loginLog',
   'repairTicket',
   'repairEvent',
 ];

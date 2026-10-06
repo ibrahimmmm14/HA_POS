@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+async function GETHandler() {
   try {
     const [templates, logs] = await Promise.all([
       prisma.messageTemplate.findMany(),
@@ -20,7 +23,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
 
@@ -51,3 +54,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const POST = guarded(POSTHandler);

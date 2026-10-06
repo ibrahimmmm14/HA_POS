@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapInvoice, logAudit } from '@/lib/db';
 import { Invoice } from '@/types';
+import { guarded } from '@/lib/auth';
 
-export async function GET(
+export const dynamic = 'force-dynamic';
+
+async function GETHandler(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -24,7 +27,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
+async function PUTHandler(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -95,7 +98,7 @@ export async function PUT(
 }
 
 // Convert order to invoice action
-export async function POST(
+async function POSTHandler(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -196,3 +199,7 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to convert order to invoice' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const PUT = guarded(PUTHandler);
+export const POST = guarded(POSTHandler);

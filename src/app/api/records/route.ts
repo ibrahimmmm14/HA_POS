@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { guarded } from '@/lib/auth';
 
 /**
  * Read-only browser for what is stored in the database.
@@ -51,7 +52,7 @@ const TABLES = {
 
 type RecordTable = keyof typeof TABLES;
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const table = new URL(request.url).searchParams.get('table');
 
@@ -95,3 +96,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Failed to read records' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);

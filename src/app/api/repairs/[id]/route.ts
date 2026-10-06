@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
 import { canTransition, isRepairStatus, nowStamp, REPAIR_STATUS_LABELS } from '@/lib/repairs';
+import { guarded } from '@/lib/auth';
 
-export async function GET(
+export const dynamic = 'force-dynamic';
+
+async function GETHandler(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -40,7 +43,7 @@ export async function GET(
  * Update a ticket. Only the fields below can change; every status change or note
  * is written to the ticket's history (repair_events).
  */
-export async function PUT(
+async function PUTHandler(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -134,3 +137,6 @@ export async function PUT(
     return NextResponse.json({ error: 'Failed to update repair ticket' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const PUT = guarded(PUTHandler);

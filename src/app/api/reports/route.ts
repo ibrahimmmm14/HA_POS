@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapItem, mapInvoice } from '@/lib/db';
+import { guarded } from '@/lib/auth';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+async function GETHandler() {
   try {
     const todayStr = new Date().toISOString().split('T')[0];
     const currentMonthStr = todayStr.substring(0, 7);
@@ -111,3 +114,5 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to generate reports' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);

@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
-import { prisma, mapUser, logAudit } from '@/lib/db';
+import { prisma, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+async function GETHandler() {
   try {
-    const [branches, warehouses, rawUsers, doctors, hospitals, insuranceCompanies] =
+    const [branches, warehouses, doctors, hospitals, insuranceCompanies] =
       await Promise.all([
         prisma.branch.findMany(),
         prisma.warehouse.findMany(),
-        prisma.user.findMany(),
         prisma.doctor.findMany(),
         prisma.hospital.findMany(),
         prisma.insuranceCompany.findMany(),
@@ -16,7 +18,6 @@ export async function GET() {
     return NextResponse.json({
       branches,
       warehouses,
-      users: rawUsers.map(mapUser),
       doctors,
       hospitals,
       insuranceCompanies,
@@ -27,7 +28,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
     if (!body.nameAr?.trim() || !body.code?.trim()) {
@@ -77,3 +78,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create branch' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const POST = guarded(POSTHandler);

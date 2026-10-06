@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapInvoice, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
 
-export async function GET(
+export const dynamic = 'force-dynamic';
+
+async function GETHandler(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -44,7 +47,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
+async function PUTHandler(
   request: Request,
   { params }: { params: { id: string } }
 ) {
@@ -93,3 +96,6 @@ export async function PUT(
     return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const PUT = guarded(PUTHandler);

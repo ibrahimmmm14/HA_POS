@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
 
-export async function POST(request: Request) {
+export const dynamic = 'force-dynamic';
+
+async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
     const { type, records } = body;
@@ -96,3 +99,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Migration failed' }, { status: 500 });
   }
 }
+
+export const POST = guarded(POSTHandler);
