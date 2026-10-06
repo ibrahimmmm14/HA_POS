@@ -13,6 +13,7 @@ interface BranchContextType {
   currentUser: User;
   users: User[];
   setCurrentUserId: (id: string) => void;
+  refreshBranches: () => Promise<void>;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
@@ -25,7 +26,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [currentUserId, setCurrentUserId] = useState<string>(initialUsers[0].id);
 
   // Fetch updated branches from API if available
-  useEffect(() => {
+  const refreshBranches = () =>
     fetch('/api/branches')
       .then((res) => res.json())
       .then((data) => {
@@ -35,6 +36,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         // Fallback to initial seed
       });
+
+  useEffect(() => {
+    refreshBranches();
   }, []);
 
   const currentBranch =
@@ -54,6 +58,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         users,
         setCurrentUserId,
+        refreshBranches,
       }}
     >
       {children}
