@@ -1,14 +1,15 @@
 // This is your Prisma schema file for HA_POS (Hearing Aid POS System)
-// Database: SQLite (local file — no server needed)
+// Database: Netlify Database (managed Postgres, connection injected via NETLIFY_DB_URL)
 // Learn more about Prisma: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("NETLIFY_DB_URL")
 }
 
 // ─────────────────────────────────────────────
@@ -201,6 +202,7 @@ model Client {
   insuranceCompany InsuranceCompany? @relation(fields: [insuranceId], references: [id])
   audiograms       Audiogram[]
   earmoldOrders    EarmoldOrder[]
+  repairTickets    RepairTicket[]
   invoices         Invoice[]
   messageLogs      MessageLog[]
 
@@ -259,6 +261,59 @@ model EarmoldOrder {
   client Client @relation(fields: [clientId], references: [id])
 
   @@map("earmold_orders")
+}
+
+// ─────────────────────────────────────────────
+// DEVICE REPAIRS
+// ─────────────────────────────────────────────
+
+model RepairTicket {
+  id            String  @id
+  ticketNo      String  @unique
+  clientId      String
+  branchId      String
+  serialNumber  String?
+  deviceBrand   String
+  deviceModel   String
+  ear           String
+  issue         String
+  underWarranty Boolean @default(false)
+  repairedBy    String
+  status        String
+  receivedAt    String
+  expectedDate  String?
+  completedAt   String?
+  cost          Float   @default(0)
+  charge        Float   @default(0)
+  diagnosis     String?
+  notes         String?
+  createdAt     String
+  updatedAt     String
+
+  // Relations
+  client Client        @relation(fields: [clientId], references: [id])
+  events RepairEvent[]
+
+  @@index([clientId])
+  @@index([serialNumber])
+  @@map("repair_tickets")
+}
+
+// Append-only history: one row per status change or note on a ticket
+model RepairEvent {
+  id         String  @id
+  ticketId   String
+  timestamp  String
+  fromStatus String?
+  toStatus   String
+  note       String?
+  userName   String
+
+  // Relations
+  ticket RepairTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("repair_events")
 }
 
 // ─────────────────────────────────────────────

@@ -113,7 +113,7 @@ graph TD
     end
 
     subgraph DataLayer [Storage & Compliance]
-        SQLiteDB[(Prisma ORM & PostgreSQL)]
+        SQLiteDB[(Prisma ORM & Netlify Database: Postgres)]
         ZatcaQR[ZATCA TLV Base64 QR Generator]
         SeedData[Prisma Seed Script: prisma/seed.ts]
     end
@@ -186,7 +186,7 @@ HA_POS/
 - **Language**: [TypeScript 5](https://www.typescriptlang.org/)
 - **UI & Styling**: [Tailwind CSS 3](https://tailwindcss.com/), [PostCSS](https://postcss.org/), [Lucide React](https://lucide.dev/) (Icons)
 - **State & Context**: React Context API for Language (AR/EN RTL/LTR) and Branch Selection
-- **Database & ORM**: [Prisma ORM 6](https://www.prisma.io/) with **PostgreSQL** database — type-safe models, automated migrations, and seed scripts
+- **Database & ORM**: [Prisma ORM 6](https://www.prisma.io/) with **Netlify Database** (managed Postgres, connection via `NETLIFY_DB_URL`) — type-safe models, automated migrations, and seed scripts
 - **Standards & Regulations**: Saudi ZATCA E-Invoicing TLV QR Code generation
 
 ---
@@ -295,11 +295,12 @@ The database (`data/db.json`) is automatically initialized on the first run with
 
 ## 💾 Database Architecture & Data Storage
 
-The application uses **Prisma ORM 6** with a **PostgreSQL** database (Neon, Supabase, Railway, or local). Set the connection string in `.env` (copy `.env.example`):
+The application uses **Prisma ORM 6** with **Netlify Database** (managed Postgres). Netlify injects the
+connection string as `NETLIFY_DB_URL`; schema and demo-data migrations live in:
 ```text
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require"
+netlify/database/migrations/
 ```
-On Netlify, add `DATABASE_URL` under Site settings → Environment variables; `netlify.toml` runs `prisma migrate deploy` during the build.
+`prisma/dev.db` is the old SQLite file from before the move and is no longer used by the app.
 
 ### Database Schema Models
 Defined in `prisma/schema.prisma`:
@@ -314,11 +315,10 @@ Defined in `prisma/schema.prisma`:
 
 ### Setting Up & Managing the Database
 
-1. **Run Migrations (Create Tables)**:
-   ```bash
-   npm run db:migrate
-   ```
-   This applies all migrations from `prisma/migrations/` to the database in `DATABASE_URL`.
+1. **Database (Netlify Database / Postgres)**:
+   The app uses Netlify Database. Netlify supplies the connection as `NETLIFY_DB_URL` and applies
+   the SQL migrations in `netlify/database/migrations/` (tables plus demo data) on every deploy.
+   Locally, run the app with `npx netlify dev` so the same variable is injected.
 
 2. **Seed Initial Data**:
    ```bash
@@ -346,9 +346,12 @@ Defined in `prisma/schema.prisma`:
 | `npm run build` | Builds the optimized production bundle |
 | `npm run start` | Runs the compiled production build |
 | `npm run lint` | Runs ESLint to check for code quality and syntax issues |
-| `npm run db:migrate` | Runs Prisma schema migration to create or update the database schema |
 | `npm run db:seed` | Populates the database with initial demo & master dataset |
 | `npm run db:studio` | Launches visual Prisma Studio GUI on `http://localhost:5555` to inspect and edit database records |
+| `npm run db:backup` | Verified export of every table into `backups/` as gzipped JSON (see [docs/BACKUP_AND_QUALITY_CONTROL.md](docs/BACKUP_AND_QUALITY_CONTROL.md)) |
+| `npm run db:restore -- <file>` | Adds back every row of a backup that is missing from the database; never overwrites existing rows |
+| `npm run qc` | Read-only data quality report (client files, invoices, serials, earmolds, repairs) |
+| `npm run typecheck` | TypeScript check without building |
 
 ---
 

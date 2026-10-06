@@ -304,7 +304,7 @@ export interface MessageLog {
   clientName: string;
   phone: string;
   channel: 'whatsapp' | 'sms';
-  trigger: 'order_ready' | 'invoice_receipt' | 'appointment' | 'battery_reminder';
+  trigger: 'order_ready' | 'repair_ready' | 'invoice_receipt' | 'appointment' | 'battery_reminder';
   content: string;
   status: 'sent' | 'delivered' | 'failed';
   sentAt: string;
@@ -324,9 +324,55 @@ export interface AuditLog {
 
 export interface MessageTemplate {
   id: string;
-  trigger: 'order_ready' | 'invoice_receipt' | 'appointment' | 'battery_reminder';
+  trigger: 'order_ready' | 'repair_ready' | 'invoice_receipt' | 'appointment' | 'battery_reminder';
   titleAr: string;
   titleEn: string;
   bodyAr: string;
   bodyEn: string;
+}
+
+// ─── Device Repairs ───────────────────────────────────────────────────────
+
+export type RepairStatus =
+  | 'received'
+  | 'diagnosing'
+  | 'sent_to_manufacturer'
+  | 'repairing'
+  | 'ready'
+  | 'delivered'
+  | 'cancelled';
+
+export interface RepairEvent {
+  id: string;
+  ticketId: string;
+  timestamp: string;
+  fromStatus?: RepairStatus | null;
+  toStatus: RepairStatus;
+  note?: string | null;
+  userName: string;
+}
+
+export interface RepairTicket {
+  id: string;
+  ticketNo: string;
+  clientId: string;
+  branchId: string;
+  serialNumber?: string | null;
+  deviceBrand: string;
+  deviceModel: string;
+  ear: 'left' | 'right' | 'both';
+  issue: string;
+  underWarranty: boolean;
+  repairedBy: string;
+  status: RepairStatus;
+  receivedAt: string;
+  expectedDate?: string | null;
+  completedAt?: string | null;
+  cost: number;
+  charge: number;
+  diagnosis?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  events?: RepairEvent[];
 }

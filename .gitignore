@@ -31,7 +31,5 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# local env / database files
-.env
-*.db
-*.db-journal
+# database backups and local data (contain patient records)
+/backups/
