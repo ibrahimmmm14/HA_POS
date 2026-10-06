@@ -15,7 +15,19 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   Layers,
+  Pencil,
+  Percent,
 } from 'lucide-react';
+
+const CATEGORY_OPTIONS = [
+  { id: 'hearing_aids', ar: 'سماعات طبية', en: 'Hearing Aids' },
+  { id: 'earmolds', ar: 'قوالب وهياكل', en: 'Earmolds' },
+  { id: 'batteries', ar: 'بطاريات', en: 'Batteries' },
+  { id: 'spare_parts', ar: 'قطع وفلاتر', en: 'Spare Parts' },
+  { id: 'accessories', ar: 'ملحقات وأجهزة', en: 'Accessories' },
+];
+
+const roundMoney = (n: number) => Math.round(n * 100) / 100;
 
 export default function InventoryPage() {
   const { lang, t } = useLanguage();
@@ -41,6 +53,20 @@ export default function InventoryPage() {
   const [newWarranty, setNewWarranty] = useState<number>(24);
   const [newMinStock, setNewMinStock] = useState<number>(3);
   const [newStockWh1, setNewStockWh1] = useState<number>(5);
+
+  // Edit item prices
+  const [priceItem, setPriceItem] = useState<Item | null>(null);
+  const [editCost, setEditCost] = useState<number>(0);
+  const [editSale, setEditSale] = useState<number>(0);
+
+  // Bulk price change by category
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkCategory, setBulkCategory] = useState<string>('hearing_aids');
+  const [bulkPercent, setBulkPercent] = useState<number>(10);
+  const [bulkTarget, setBulkTarget] = useState<'salePrice' | 'costPrice' | 'both'>('salePrice');
+
+  const [priceSaving, setPriceSaving] = useState(false);
+  const [priceError, setPriceError] = useState('');
 
   const fetchItems = () => {
     fetch('/api/items')
@@ -97,6 +123,75 @@ export default function InventoryPage() {
     }
   };
 
+  const openPriceEdit = (item: Item) => {
+    setPriceItem(item);
+    setEditCost(item.costPrice);
+    setEditSale(item.salePrice);
+    setPriceError('');
+  };
+
+  const handleSavePrice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!priceItem) return;
+    setPriceSaving(true);
+    setPriceError('');
+    try {
+      const res = await fetch(`/api/items/${priceItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ costPrice: editCost, salePrice: editSale }),
+      });
+      if (!res.ok) {
+        setPriceError(lang === 'ar' ? 'تعذر حفظ السعر.' : 'Could not save the price.');
+        return;
+      }
+      setPriceItem(null);
+      fetchItems();
+    } catch (err) {
+      console.error(err);
+      setPriceError(lang === 'ar' ? 'حدث خطأ في الاتصال.' : 'Connection error.');
+    } finally {
+      setPriceSaving(false);
+    }
+  };
+
+  const openBulk = () => {
+    if (category !== 'all') setBulkCategory(category);
+    setPriceError('');
+    setShowBulk(true);
+  };
+
+  const bulkItems = items.filter((i) => i.category === bulkCategory);
+  const bulkFactor = 1 + (Number(bulkPercent) || 0) / 100;
+
+  const handleBulkSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPriceSaving(true);
+    setPriceError('');
+    try {
+      const res = await fetch('/api/items/bulk-price', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: bulkCategory, percent: Number(bulkPercent), target: bulkTarget }),
+      });
+      if (!res.ok) {
+        setPriceError(
+          lang === 'ar'
+            ? 'تعذر تعديل الأسعار. النسبة يجب أن تكون بين -90 و 500 وليست صفراً.'
+            : 'Could not update prices. The percentage must be between -90 and 500, and not 0.'
+        );
+        return;
+      }
+      setShowBulk(false);
+      fetchItems();
+    } catch (err) {
+      console.error(err);
+      setPriceError(lang === 'ar' ? 'حدث خطأ في الاتصال.' : 'Connection error.');
+    } finally {
+      setPriceSaving(false);
+    }
+  };
+
   const filtered = items.filter((item) => {
     const matchCat = category === 'all' || item.category === category;
     const matchSearch =
@@ -139,6 +234,13 @@ export default function InventoryPage() {
             <Barcode className="w-4 h-4 text-purple-600" />
             <span>{t.serials}</span>
           </Link>
+          <button
+            onClick={openBulk}
+            className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition"
+          >
+            <Percent className="w-4 h-4 text-amber-600" />
+            <span>{lang === 'ar' ? 'تعديل أسعار فئة' : 'Edit Category Prices'}</span>
+          </button>
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition"
@@ -209,6 +311,7 @@ export default function InventoryPage() {
                 ))}
                 <th className="p-3 text-center">{t.stockQty}</th>
                 <th className="p-3 text-center">{t.status}</th>
+                <th className="p-3 text-center w-16">{lang === 'ar' ? 'تعديل' : 'Edit'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -270,6 +373,15 @@ export default function InventoryPage() {
                         </span>
                       )}
                     </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => openPriceEdit(item)}
+                        className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition inline-flex"
+                        title={lang === 'ar' ? 'تعديل السعر' : 'Edit price'}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -277,6 +389,204 @@ export default function InventoryPage() {
           </table>
         </div>
       </div>
+
+      {/* Edit Item Price Modal */}
+      {priceItem && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-gray-900">
+                {lang === 'ar' ? 'تعديل سعر الصنف' : 'Edit Item Price'}
+              </h3>
+              <button onClick={() => setPriceItem(null)} className="text-gray-400 hover:text-gray-600 font-bold">
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs">
+              <div className="font-bold text-gray-900">{priceItem.nameAr}</div>
+              <div className="font-mono text-gray-500">{priceItem.sku}</div>
+            </div>
+
+            <form onSubmit={handleSavePrice} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">{t.costPrice}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={editCost}
+                    onChange={(e) => setEditCost(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg p-2 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">{t.salePrice}</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    value={editSale}
+                    onChange={(e) => setEditSale(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg p-2 font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              {editCost > 0 && (
+                <p className={`font-mono ${editSale < editCost ? 'text-red-600' : 'text-gray-500'}`}>
+                  {lang === 'ar' ? 'هامش الربح' : 'Margin'}:{' '}
+                  {(((editSale - editCost) / editCost) * 100).toFixed(1)}%
+                  {editSale < editCost && (lang === 'ar' ? ' — سعر البيع أقل من التكلفة' : ' — sale price is below cost')}
+                </p>
+              )}
+              <p className="text-gray-500">
+                {lang === 'ar'
+                  ? 'التعديل يسري على الفواتير الجديدة فقط، ولا يغيّر الفواتير الصادرة.'
+                  : 'Applies to new invoices only; issued invoices are not changed.'}
+              </p>
+
+              {priceError && <p className="text-red-600 bg-red-50 p-2 rounded-lg">{priceError}</p>}
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setPriceItem(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={priceSaving}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition disabled:opacity-60"
+                >
+                  {priceSaving ? t.loading : t.save}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Price Change by Category Modal */}
+      {showBulk && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-gray-900">
+                {lang === 'ar' ? 'تعديل أسعار فئة كاملة' : 'Change Prices for a Category'}
+              </h3>
+              <button onClick={() => setShowBulk(false)} className="text-gray-400 hover:text-gray-600 font-bold">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleBulkSave} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">{t.category}</label>
+                <select
+                  value={bulkCategory}
+                  onChange={(e) => setBulkCategory(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2 bg-white"
+                >
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {lang === 'ar' ? c.ar : c.en}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">
+                    {lang === 'ar' ? 'النسبة % (سالب للتخفيض)' : 'Percent % (negative to lower)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="-90"
+                    max="500"
+                    required
+                    value={bulkPercent}
+                    onChange={(e) => setBulkPercent(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg p-2 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">
+                    {lang === 'ar' ? 'يطبق على' : 'Apply to'}
+                  </label>
+                  <select
+                    value={bulkTarget}
+                    onChange={(e) => setBulkTarget(e.target.value as 'salePrice' | 'costPrice' | 'both')}
+                    className="w-full border border-gray-300 rounded-lg p-2 bg-white"
+                  >
+                    <option value="salePrice">{t.salePrice}</option>
+                    <option value="costPrice">{t.costPrice}</option>
+                    <option value="both">{lang === 'ar' ? 'الاثنين' : 'Both'}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-3 bg-gray-50 space-y-1">
+                <div className="font-bold text-gray-800">
+                  {lang === 'ar'
+                    ? `سيتم تعديل ${bulkItems.length} صنف`
+                    : `${bulkItems.length} item(s) will change`}
+                </div>
+                {bulkItems.slice(0, 4).map((i) => (
+                  <div key={i.id} className="flex items-center justify-between gap-2 font-mono text-[11px] text-gray-600">
+                    <span className="truncate">{i.sku}</span>
+                    <span className="whitespace-nowrap">
+                      {bulkTarget !== 'costPrice' && (
+                        <>
+                          {formatCurrency(i.salePrice)} ← <b>{formatCurrency(roundMoney(i.salePrice * bulkFactor))}</b>
+                        </>
+                      )}
+                      {bulkTarget === 'both' && ' | '}
+                      {bulkTarget !== 'salePrice' && (
+                        <>
+                          {formatCurrency(i.costPrice)} ← <b>{formatCurrency(roundMoney(i.costPrice * bulkFactor))}</b>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                ))}
+                {bulkItems.length > 4 && <div className="text-gray-400">…</div>}
+              </div>
+              <p className="text-gray-500">
+                {lang === 'ar'
+                  ? 'التعديل يسري على الفواتير الجديدة فقط، ولا يغيّر الفواتير الصادرة.'
+                  : 'Applies to new invoices only; issued invoices are not changed.'}
+              </p>
+
+              {priceError && <p className="text-red-600 bg-red-50 p-2 rounded-lg">{priceError}</p>}
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowBulk(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
+                >
+                  {t.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={priceSaving || bulkItems.length === 0 || !Number(bulkPercent)}
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow transition disabled:opacity-60"
+                >
+                  {priceSaving ? t.loading : lang === 'ar' ? 'تطبيق التعديل' : 'Apply Change'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Item Modal */}
       {showAddModal && (

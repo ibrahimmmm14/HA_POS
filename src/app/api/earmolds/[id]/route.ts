@@ -79,10 +79,12 @@ export async function PUT(
     }
 
     await logAudit(
-      'UPDATE_EARMOLD_STATUS',
+      prevOrder.status !== updatedOrder.status ? 'UPDATE_EARMOLD_STATUS' : 'UPDATE_EARMOLD_ORDER',
       'EARMOLD_ORDER',
       params.id,
-      `تحديث حالة طلب المعمل ${updatedOrder.orderNo} إلى: ${updatedOrder.status}`
+      prevOrder.status !== updatedOrder.status
+        ? `تحديث حالة طلب المعمل ${updatedOrder.orderNo} إلى: ${updatedOrder.status}`
+        : `تعديل بيانات طلب المعمل ${updatedOrder.orderNo}`
     );
 
     return NextResponse.json({ order: updatedOrder });

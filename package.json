@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "db:backup": "node scripts/backup-db.mjs",
     "db:restore": "node scripts/restore-db.mjs",
-    "qc": "node scripts/qc-check.mjs"
+    "qc": "node scripts/qc-check.mjs",
+    "db:seed:test": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed-test.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

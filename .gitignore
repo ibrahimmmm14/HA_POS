@@ -33,3 +33,6 @@ Thumbs.db
 
 # database backups and local data (contain patient records)
 /backups/
+
+# Claude Code local settings
+.claude/settings.local.json

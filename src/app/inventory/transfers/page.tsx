@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/common/LanguageContext';
 import { useBranch } from '@/components/common/BranchContext';
@@ -14,6 +14,8 @@ import {
   ArrowRight,
   Building,
   Package,
+  ScanBarcode,
+  Trash2,
 } from 'lucide-react';
 
 export default function TransfersPage() {
@@ -28,8 +30,10 @@ export default function TransfersPage() {
   const [showModal, setShowModal] = useState(false);
   const [fromBranchId, setFromBranchId] = useState('br-01');
   const [toBranchId, setToBranchId] = useState('br-02');
-  const [selectedItemId, setSelectedItemId] = useState('');
-  const [transferQty, setTransferQty] = useState<number>(1);
+  const [lines, setLines] = useState<{ item: Item; quantity: number }[]>([]);
+  const [scanInput, setScanInput] = useState('');
+  const [scanMessage, setScanMessage] = useState('');
+  const scanRef = useRef<HTMLInputElement>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,12 +51,67 @@ export default function TransfersPage() {
     fetch('/api/items')
       .then((res) => res.json())
       .then((data) => {
-        if (data.items) {
-          setItems(data.items);
-          if (data.items.length > 0) setSelectedItemId(data.items[0].id);
-        }
+        if (data.items) setItems(data.items);
       });
   }, []);
+
+  // Keep the scan box focused while the dialog is open so a scanner can be used right away
+  useEffect(() => {
+    if (showModal) setTimeout(() => scanRef.current?.focus(), 50);
+  }, [showModal]);
+
+  const addLine = (item: Item) => {
+    setLines((prev) => {
+      const existing = prev.find((l) => l.item.id === item.id);
+      if (existing) {
+        return prev.map((l) => (l.item.id === item.id ? { ...l, quantity: l.quantity + 1 } : l));
+      }
+      return [...prev, { item, quantity: 1 }];
+    });
+  };
+
+  const setLineQty = (itemId: string, quantity: number) =>
+    setLines((prev) =>
+      prev.map((l) => (l.item.id === itemId ? { ...l, quantity: Math.max(1, quantity || 1) } : l))
+    );
+
+  const removeLine = (itemId: string) => setLines((prev) => prev.filter((l) => l.item.id !== itemId));
+
+  const query = scanInput.trim().toLowerCase();
+  const searchResults = query
+    ? items
+        .filter(
+          (i) =>
+            i.barcode.toLowerCase().includes(query) ||
+            i.sku.toLowerCase().includes(query) ||
+            i.nameAr.toLowerCase().includes(query) ||
+            i.nameEn.toLowerCase().includes(query)
+        )
+        .slice(0, 8)
+    : [];
+
+  // Barcode scanners type the code and press Enter: an exact barcode/SKU match is added straight away;
+  // otherwise Enter adds the only search result, if there is exactly one.
+  const handleScanSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query) return;
+
+    const exact = items.find((i) => i.barcode.toLowerCase() === query || i.sku.toLowerCase() === query);
+    const match = exact || (searchResults.length === 1 ? searchResults[0] : undefined);
+
+    if (match) {
+      addLine(match);
+      setScanMessage(`✓ ${lang === 'ar' ? match.nameAr : match.nameEn}`);
+      setScanInput('');
+    } else {
+      setScanMessage(
+        searchResults.length > 1
+          ? lang === 'ar' ? 'اختر الصنف من النتائج أدناه' : 'Pick the item from the results below'
+          : lang === 'ar' ? 'لم يتم العثور على صنف بهذا الباركود' : 'No item found for this barcode'
+      );
+    }
+    scanRef.current?.focus();
+  };
 
   const handleCreateTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,8 +120,10 @@ export default function TransfersPage() {
       return;
     }
 
-    const item = items.find((i) => i.id === selectedItemId);
-    if (!item) return;
+    if (lines.length === 0) {
+      setScanMessage(lang === 'ar' ? 'أضف صنفاً واحداً على الأقل' : 'Add at least one item');
+      return;
+    }
 
     const fromWh = warehouses.find((w) => w.branchId === fromBranchId) || warehouses[0];
     const toWh = warehouses.find((w) => w.branchId === toBranchId) || warehouses[1];
@@ -78,15 +139,13 @@ export default function TransfersPage() {
           toBranchId,
           toWarehouseId: toWh.id,
           requestedBy: currentUser.nameAr,
-          items: [
-            {
-              itemId: item.id,
-              itemCode: item.sku,
-              itemNameAr: item.nameAr,
-              itemNameEn: item.nameEn,
-              quantity: Number(transferQty),
-            },
-          ],
+          items: lines.map((l) => ({
+            itemId: l.item.id,
+            itemCode: l.item.sku,
+            itemNameAr: l.item.nameAr,
+            itemNameEn: l.item.nameEn,
+            quantity: l.quantity,
+          })),
           notes,
         }),
       });
@@ -94,6 +153,9 @@ export default function TransfersPage() {
       if (res.ok) {
         setShowModal(false);
         setNotes('');
+        setLines([]);
+        setScanInput('');
+        setScanMessage('');
         fetchTransfers();
       }
     } catch (e) {
@@ -230,7 +292,7 @@ export default function TransfersPage() {
       {/* New Transfer Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
               <h3 className="font-bold text-base text-gray-900">
                 {lang === 'ar' ? 'طلب تحويل مخزني جديد بين الفروع' : 'Create Stock Transfer Order'}
@@ -278,31 +340,98 @@ export default function TransfersPage() {
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">
-                  الصنف المراد تحويله <span className="text-red-500">*</span>
+                  {lang === 'ar' ? 'مسح الباركود أو البحث عن صنف' : 'Scan barcode or search item'}{' '}
+                  <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={selectedItemId}
-                  onChange={(e) => setSelectedItemId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 bg-white"
-                >
-                  {items.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      [{i.sku}] {i.nameAr}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    ref={scanRef}
+                    type="text"
+                    value={scanInput}
+                    onChange={(e) => {
+                      setScanInput(e.target.value);
+                      setScanMessage('');
+                    }}
+                    onKeyDown={(e) => {
+                      // Enter must not submit the whole transfer form while scanning
+                      if (e.key === 'Enter') handleScanSubmit(e as unknown as React.FormEvent);
+                    }}
+                    placeholder={
+                      lang === 'ar'
+                        ? 'امسح الباركود أو اكتب الاسم / الرمز ثم Enter'
+                        : 'Scan a barcode or type name / SKU, then Enter'
+                    }
+                    className="w-full border border-gray-300 rounded-lg p-2 ps-9 font-mono focus:ring-2 focus:ring-blue-500"
+                  />
+                  <ScanBarcode className="w-4 h-4 text-gray-400 absolute start-3 top-2.5" />
+                </div>
+                {scanMessage && <p className="mt-1 text-[11px] text-gray-600">{scanMessage}</p>}
+
+                {searchResults.length > 0 && (
+                  <ul className="mt-2 border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-44 overflow-y-auto">
+                    {searchResults.map((i) => (
+                      <li key={i.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            addLine(i);
+                            setScanInput('');
+                            setScanMessage(`✓ ${lang === 'ar' ? i.nameAr : i.nameEn}`);
+                            scanRef.current?.focus();
+                          }}
+                          className="w-full text-start p-2 hover:bg-blue-50 flex items-center justify-between gap-2"
+                        >
+                          <span>
+                            <span className="font-semibold text-gray-900">{lang === 'ar' ? i.nameAr : i.nameEn}</span>
+                            <span className="block text-[10px] text-gray-500 font-mono">
+                              {i.sku} · {i.barcode}
+                            </span>
+                          </span>
+                          <PlusCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div>
-                <label className="block font-semibold text-gray-700 mb-1">{t.quantity}</label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={transferQty}
-                  onChange={(e) => setTransferQty(Math.max(1, Number(e.target.value)))}
-                  className="w-full border border-gray-300 rounded-lg p-2 font-mono"
-                />
+                <label className="block font-semibold text-gray-700 mb-1">
+                  {lang === 'ar' ? 'الأصناف المراد تحويلها' : 'Items to transfer'} ({lines.length})
+                </label>
+                {lines.length === 0 ? (
+                  <p className="text-gray-400 border border-dashed border-gray-300 rounded-lg p-3 text-center">
+                    {lang === 'ar' ? 'لم تتم إضافة أصناف بعد' : 'No items added yet'}
+                  </p>
+                ) : (
+                  <ul className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                    {lines.map((l) => (
+                      <li key={l.item.id} className="p-2 flex items-center gap-2">
+                        <span className="flex-1 min-w-0">
+                          <span className="block font-semibold text-gray-900 truncate">
+                            {lang === 'ar' ? l.item.nameAr : l.item.nameEn}
+                          </span>
+                          <span className="block text-[10px] text-gray-500 font-mono">{l.item.sku}</span>
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={l.quantity}
+                          onChange={(e) => setLineQty(l.item.id, Number(e.target.value))}
+                          className="w-16 border border-gray-300 rounded-lg p-1.5 font-mono text-center"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeLine(l.item.id)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                          title={lang === 'ar' ? 'حذف' : 'Remove'}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div>
