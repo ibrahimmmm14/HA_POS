@@ -20,11 +20,16 @@ import {
   Activity,
   Wrench,
   Database,
+  Banknote,
+  ShieldCheck,
 } from 'lucide-react';
+import { useBranch } from '@/components/common/BranchContext';
+import { pageRequirement, satisfies } from '@/lib/permissions';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const { permissions } = useBranch();
 
   const navItems = [
     {
@@ -102,6 +107,12 @@ export function Sidebar() {
       active: pathname.startsWith('/reports'),
     },
     {
+      href: '/finance',
+      label: lang === 'ar' ? 'التقرير المالي' : 'Finance Report',
+      icon: Banknote,
+      active: pathname.startsWith('/finance'),
+    },
+    {
       href: '/records',
       label: t.records,
       icon: Database,
@@ -113,7 +124,13 @@ export function Sidebar() {
       icon: Settings,
       active: pathname.startsWith('/settings'),
     },
-  ];
+    {
+      href: '/users',
+      label: lang === 'ar' ? 'المستخدمون والصلاحيات' : 'Users & Permissions',
+      icon: ShieldCheck,
+      active: pathname.startsWith('/users'),
+    },
+  ].filter((item) => satisfies(permissions, pageRequirement(item.href)));
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col flex-shrink-0 min-h-screen border-r border-slate-800 print:hidden">

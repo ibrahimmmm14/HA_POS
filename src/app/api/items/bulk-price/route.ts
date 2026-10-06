@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapItem, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 const CATEGORIES = ['hearing_aids', 'earmolds', 'batteries', 'spare_parts', 'accessories'];
 const TARGETS = ['salePrice', 'costPrice', 'both'];
@@ -7,7 +10,7 @@ const TARGETS = ['salePrice', 'costPrice', 'both'];
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // Raise or lower the prices of every item in one category by a percentage
-export async function PUT(request: Request) {
+async function PUTHandler(request: Request) {
   try {
     const body = await request.json();
     const { category, target } = body;
@@ -51,3 +54,5 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Failed to update prices' }, { status: 500 });
   }
 }
+
+export const PUT = guarded(PUTHandler);

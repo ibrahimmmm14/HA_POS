@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapStockTransfer, mapItem, logAudit } from '@/lib/db';
 import { StockTransfer } from '@/types';
+import { guarded } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 type TransferItem = StockTransfer['items'][number];
 
-export async function GET() {
+async function GETHandler() {
   try {
     const rawTransfers = await prisma.stockTransfer.findMany({
       include: {
@@ -34,7 +37,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
 
@@ -80,7 +83,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+async function PUTHandler(request: Request) {
   try {
     const body = await request.json();
     const { id, status } = body;
@@ -164,3 +167,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Failed to update transfer' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const POST = guarded(POSTHandler);
+export const PUT = guarded(PUTHandler);

@@ -66,7 +66,32 @@ model User {
   branchIds       String
   currentBranchId String
 
+  // Access control
+  passwordHash       String?
+  permissions        String? // JSON array overriding the role's default permissions; null = role defaults
+  active             Boolean @default(true)
+  mustChangePassword Boolean @default(false)
+  lastLoginAt        String?
+  createdAt          String?
+
   @@map("users")
+}
+
+// Sign-in activity (successful and failed attempts, logouts, password changes)
+model LoginLog {
+  id        String  @id
+  timestamp String
+  userId    String?
+  username  String
+  event     String
+  success   Boolean
+  ip        String?
+  userAgent String?
+  detail    String?
+
+  @@index([timestamp])
+  @@index([username])
+  @@map("login_logs")
 }
 
 // ─────────────────────────────────────────────

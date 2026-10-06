@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
+import { guarded } from '@/lib/auth';
 
-export async function GET(request: Request) {
+export const dynamic = 'force-dynamic';
+
+async function GETHandler(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search')?.toLowerCase().trim();
@@ -29,7 +32,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
 
@@ -76,3 +79,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create client' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const POST = guarded(POSTHandler);

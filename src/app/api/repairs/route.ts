@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
 import { nowStamp } from '@/lib/repairs';
+import { guarded } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 /** Next ticket number for this year, based on the highest existing one (safe after deletions). */
 async function nextTicketNo(): Promise<string> {
@@ -14,7 +17,7 @@ async function nextTicketNo(): Promise<string> {
   return `${prefix}${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -48,7 +51,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
 
@@ -136,3 +139,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create repair ticket' }, { status: 500 });
   }
 }
+
+export const GET = guarded(GETHandler);
+export const POST = guarded(POSTHandler);

@@ -69,9 +69,15 @@ function parseJson<T>(value: string | null | undefined, fallback: T): T {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mapUser(row: any): User {
+  // Explicit fields only: never pass the password hash or other account internals to a client.
   return {
-    ...row,
+    id: row.id,
+    username: row.username,
+    nameAr: row.nameAr,
+    nameEn: row.nameEn,
+    role: row.role,
     branchIds: parseJson<string[]>(row.branchIds, []),
+    currentBranchId: row.currentBranchId,
   };
 }
 
