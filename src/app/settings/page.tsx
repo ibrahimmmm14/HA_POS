@@ -14,14 +14,14 @@ import {
   PlusCircle,
 } from 'lucide-react';
 
-type AddKind = 'branch' | 'hospital' | 'doctor';
+type AddKind = 'branch' | 'hospital' | 'doctor' | 'insurance';
 
 interface FieldDef {
   name: string;
   labelAr: string;
   labelEn: string;
   required?: boolean;
-  type?: 'text' | 'tel' | 'number' | 'select';
+  type?: 'text' | 'tel' | 'number' | 'select' | 'checkbox';
   dir?: 'ltr';
 }
 
@@ -63,6 +63,19 @@ const FORMS: Record<AddKind, { titleAr: string; titleEn: string; endpoint: strin
       { name: 'specialtyAr', labelAr: 'التخصص', labelEn: 'Specialty' },
       { name: 'phone', labelAr: 'رقم التواصل', labelEn: 'Phone', type: 'tel', dir: 'ltr' },
       { name: 'commissionPercent', labelAr: 'نسبة الإحالة %', labelEn: 'Referral %', type: 'number', dir: 'ltr' },
+    ],
+  },
+  insurance: {
+    titleAr: 'إضافة شركة تأمين جديدة',
+    titleEn: 'Add New Insurance Company',
+    endpoint: '/api/insurance',
+    fields: [
+      { name: 'nameAr', labelAr: 'اسم الشركة (عربي)', labelEn: 'Company name (Arabic)', required: true },
+      { name: 'nameEn', labelAr: 'اسم الشركة (إنجليزي)', labelEn: 'Company name (English)', dir: 'ltr' },
+      { name: 'code', labelAr: 'الرمز (اختياري)', labelEn: 'Code (optional)', dir: 'ltr' },
+      { name: 'phone', labelAr: 'الهاتف', labelEn: 'Phone', type: 'tel', dir: 'ltr' },
+      { name: 'defaultCoveragePercent', labelAr: 'نسبة التغطية الافتراضية %', labelEn: 'Default coverage %', type: 'number', dir: 'ltr' },
+      { name: 'requiresPreApproval', labelAr: 'تتطلب موافقة مسبقة', labelEn: 'Requires pre-approval', type: 'checkbox' },
     ],
   },
 };
@@ -294,6 +307,8 @@ export default function SettingsPage() {
 
       {/* Tab: Insurance */}
       {activeTab === 'insurance' && (
+        <div className="space-y-4">
+        <div className="flex justify-end">{addButton('insurance', 'إضافة شركة تأمين', 'Add Insurance Company')}</div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {insurance.map((ic) => (
             <div
@@ -323,6 +338,7 @@ export default function SettingsPage() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       )}
 
@@ -380,7 +396,17 @@ export default function SettingsPage() {
                     {lang === 'ar' ? f.labelAr : f.labelEn}
                     {f.required && <span className="text-red-500"> *</span>}
                   </label>
-                  {f.type === 'select' ? (
+                  {f.type === 'checkbox' ? (
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form[f.name] === 'true'}
+                        onChange={(e) => setForm({ ...form, [f.name]: e.target.checked ? 'true' : '' })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-gray-600">{lang === 'ar' ? 'نعم' : 'Yes'}</span>
+                    </label>
+                  ) : f.type === 'select' ? (
                     <select
                       required={f.required}
                       value={form[f.name] || ''}
