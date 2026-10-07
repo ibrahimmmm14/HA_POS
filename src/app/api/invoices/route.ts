@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapInvoice, mapItem, logAudit, nextInvoiceNo } from '@/lib/db';
 import { InvoiceLine } from '@/types';
-import { currentUser, guarded, inScope, scopeFilter } from '@/lib/auth';
+import { allowedWarehouses, currentUser, guarded, inScope, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,15 +86,22 @@ async function POSTHandler(request: Request) {
     if (!patient || !inScope(user, patient.branchId)) {
       return NextResponse.json({ error: 'client_not_found' }, { status: 404 });
     }
+    // Stock may only come out of warehouses of this branch that the user works with
+    const userWarehouses = await allowedWarehouses(user);
     const branchWarehouses = new Set(
-      (await prisma.warehouse.findMany({ where: { branchId }, select: { id: true } })).map((w) => w.id)
+      (await prisma.warehouse.findMany({ where: { branchId }, select: { id: true } }))
+        .map((w) => w.id)
+        .filter((id) => !userWarehouses || userWarehouses.has(id))
     );
     const usedWarehouses: string[] = [body.warehouseId, ...(body.lines || []).map((l: { warehouseId?: string }) => l.warehouseId)].filter(Boolean);
     if (usedWarehouses.some((w) => !branchWarehouses.has(w))) {
       return NextResponse.json({ error: 'warehouse_not_in_branch' }, { status: 403 });
     }
     // When none is given, stock comes out of this branch's own warehouse
-    const defaultWarehouse: string = body.warehouseId || Array.from(branchWarehouses)[0] || 'wh-01';
+    const defaultWarehouse: string = body.warehouseId || Array.from(branchWarehouses)[0];
+    if (!defaultWarehouse) {
+      return NextResponse.json({ error: 'no_warehouse' }, { status: 403 });
+    }
 
     const invoiceNo: string = body.invoiceNo || (await nextInvoiceNo());
 

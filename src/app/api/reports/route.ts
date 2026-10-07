@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapItem, mapInvoice } from '@/lib/db';
-import { branchScope, currentUser, guarded, scopeFilter } from '@/lib/auth';
+import { allowedWarehouses, branchScope, currentUser, guarded, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,11 +21,11 @@ async function GETHandler(request: Request) {
         prisma.branch.findMany({ where: scope ? { id: { in: scope } } : undefined }),
         prisma.doctor.findMany(),
         prisma.hospital.findMany(),
-        scope ? prisma.warehouse.findMany({ where: { branchId: { in: scope } }, select: { id: true } }) : Promise.resolve(null),
+        allowedWarehouses(user),
       ]);
 
     const invoices = rawInvoices.map(mapInvoice);
-    const visibleWarehouses = scopedWarehouses && new Set(scopedWarehouses.map((w) => w.id));
+    const visibleWarehouses = scopedWarehouses;
     // Stock counts only cover the warehouses of the user's branches
     const items = rawItems.map(mapItem).map((item) =>
       visibleWarehouses

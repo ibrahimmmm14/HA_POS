@@ -70,6 +70,7 @@ model User {
   // Access control
   passwordHash       String?
   permissions        String? // JSON array overriding the role's default permissions; null = role defaults
+  warehouseIds       String? // JSON array of warehouse ids the user may work with; null = all warehouses of their branches
   active             Boolean @default(true)
   mustChangePassword Boolean @default(false)
   lastLoginAt        String?

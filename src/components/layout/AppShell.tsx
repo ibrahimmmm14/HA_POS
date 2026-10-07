@@ -12,7 +12,7 @@ import { pageRequirement, satisfies } from '@/lib/permissions';
 import { safeNext } from '@/lib/nav';
 
 // First page (in menu order) a user is allowed to open; used when they land on a page they cannot see
-const LANDING_ORDER = ['/', '/pos', '/invoices', '/clients', '/earmolds', '/repairs', '/inventory', '/inventory/transfers', '/finance', '/reports', '/users', '/account'];
+const LANDING_ORDER = ['/', '/pos', '/invoices', '/clients', '/earmolds', '/repairs', '/inventory', '/finance', '/reports', '/users', '/account'];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

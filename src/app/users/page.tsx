@@ -13,6 +13,7 @@ interface ManagedUser {
   nameEn: string;
   role: Role;
   branchIds: string[];
+  warehouseIds: string[] | null;
   active: boolean;
   mustChangePassword: boolean;
   hasPassword: boolean;
@@ -70,7 +71,7 @@ type Dialog = { type: 'create' } | { type: 'edit'; user: ManagedUser } | { type:
 
 export default function UsersPage() {
   const { lang } = useLanguage();
-  const { branches, session } = useBranch();
+  const { branches, warehouses, session } = useBranch();
   const ar = lang === 'ar';
 
   const [tab, setTab] = useState<'users' | 'logs'>('users');
@@ -85,6 +86,8 @@ export default function UsersPage() {
   const [nameEn, setNameEn] = useState('');
   const [role, setRole] = useState<Role>('cashier');
   const [branchIds, setBranchIds] = useState<string[]>([]);
+  // empty = every warehouse of the chosen branches
+  const [whIds, setWhIds] = useState<string[]>([]);
   const [active, setActive] = useState(true);
   const [customPerms, setCustomPerms] = useState(false);
   const [perms, setPerms] = useState<Permission[]>([]);
@@ -140,6 +143,7 @@ export default function UsersPage() {
     setNameEn('');
     setRole('cashier');
     setBranchIds(branches.length ? [branches[0].id] : []);
+    setWhIds([]);
     setActive(true);
     setCustomPerms(false);
     setPerms([...ROLE_DEFAULTS.cashier]);
@@ -153,6 +157,7 @@ export default function UsersPage() {
     setNameEn(u.nameEn);
     setRole(u.role);
     setBranchIds(u.branchIds);
+    setWhIds(u.warehouseIds ?? []);
     setActive(u.active);
     setCustomPerms(!!u.permissionOverride);
     setPerms((u.permissionOverride ?? ROLE_DEFAULTS[u.role]).filter((p) => !isAdminOnly(p)));
@@ -172,6 +177,7 @@ export default function UsersPage() {
   };
 
   const togglePerm = (p: Permission) => setPerms((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
+  const toggleWh = (id: string) => setWhIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const toggleBranch = (id: string) => setBranchIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const errorText = (code?: string, message?: string) => {
@@ -209,11 +215,13 @@ export default function UsersPage() {
   const submitUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dialog || dialog.type === 'password') return;
+    // only warehouses of the chosen branches count; none chosen = all of them
+    const warehouseIds = whIds.filter((w) => warehouses.some((x) => x.id === w && branchIds.includes(x.branchId)));
     const permissions = customPerms ? perms.filter((p) => !isAdminOnly(p)) : null;
     const ok =
       dialog.type === 'create'
-        ? await send('/api/users', 'POST', { username, nameAr, nameEn, role, branchIds, password, permissions })
-        : await send(`/api/users/${dialog.user.id}`, 'PUT', { nameAr, nameEn, role, branchIds, active, permissions });
+        ? await send('/api/users', 'POST', { username, nameAr, nameEn, role, branchIds, warehouseIds, password, permissions })
+        : await send(`/api/users/${dialog.user.id}`, 'PUT', { nameAr, nameEn, role, branchIds, warehouseIds, active, permissions });
     if (ok) {
       setNotice(
         dialog.type === 'create'
@@ -308,6 +316,7 @@ export default function UsersPage() {
                   <th className="p-3 text-start">{ar ? 'المستخدم' : 'User'}</th>
                   <th className="p-3 text-start">{ar ? 'الدور' : 'Role'}</th>
                   <th className="p-3 text-start">{ar ? 'الفروع' : 'Branches'}</th>
+                  <th className="p-3 text-start">{ar ? 'المستودعات' : 'Warehouses'}</th>
                   <th className="p-3 text-center">{ar ? 'الصلاحيات' : 'Permissions'}</th>
                   <th className="p-3 text-center">{ar ? 'الحالة' : 'Status'}</th>
                   <th className="p-3 text-start">{ar ? 'آخر دخول' : 'Last sign-in'}</th>
@@ -324,6 +333,11 @@ export default function UsersPage() {
                     <td className="p-3 font-semibold text-gray-800">{roleLabel(u.role)}</td>
                     <td className="p-3 text-gray-600">
                       {u.branchIds.map((id) => branches.find((b) => b.id === id)?.code || id).join(', ')}
+                    </td>
+                    <td className="p-3 text-gray-600">
+                      {u.warehouseIds && u.warehouseIds.length
+                        ? u.warehouseIds.map((id) => warehouses.find((w) => w.id === id)?.code || id).join(', ')
+                        : ar ? 'كل مستودعات فروعه' : 'All of their branches'}
                     </td>
                     <td className="p-3 text-center">
                       <span className="font-mono font-bold text-blue-700">{u.permissions.length}</span>
@@ -493,6 +507,21 @@ export default function UsersPage() {
                     </label>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <label className={label}>{ar ? 'المستودعات المسموح بها' : 'Allowed warehouses'}</label>
+                <div className="flex flex-wrap gap-2">
+                  {warehouses.filter((w) => branchIds.includes(w.branchId)).map((w) => (
+                    <label key={w.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer ${whIds.includes(w.id) ? 'bg-blue-50 border-blue-300 text-blue-900' : 'bg-white border-gray-300 text-gray-700'}`}>
+                      <input type="checkbox" checked={whIds.includes(w.id)} onChange={() => toggleWh(w.id)} />
+                      <span>{ar ? w.nameAr : w.nameEn}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {ar ? 'بدون اختيار: يعمل المستخدم على كل مستودعات فروعه.' : 'None selected: the user works with every warehouse of their branches.'}
+                </p>
               </div>
 
               {dialog.type === 'create' && (

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
-import { getSessionUser, guarded } from '@/lib/auth';
+import { cleanWarehouseIds, getSessionUser, guarded } from '@/lib/auth';
 import { isPermission, isRole } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
@@ -38,6 +38,17 @@ export const PUT = guarded(async (request: Request, { params }: { params: { id: 
       if (ids.length === 0) return NextResponse.json({ error: 'branch_required' }, { status: 400 });
       data.branchIds = JSON.stringify(ids);
       if (!ids.includes(target.currentBranchId)) data.currentBranchId = ids[0];
+    }
+
+    // warehouses are checked against the branches the user will have after this update
+    if (body.warehouseIds !== undefined || data.branchIds !== undefined) {
+      const branchList: string[] = data.branchIds
+        ? JSON.parse(data.branchIds as string)
+        : JSON.parse(target.branchIds || '[]');
+      const raw = body.warehouseIds !== undefined ? body.warehouseIds : target.warehouseIds ? JSON.parse(target.warehouseIds) : null;
+      const cleaned = await cleanWarehouseIds(raw, branchList);
+      if (cleaned === 'invalid') return NextResponse.json({ error: 'warehouse_not_in_branch' }, { status: 400 });
+      data.warehouseIds = cleaned && cleaned.length ? JSON.stringify(cleaned) : null;
     }
 
     if (body.active !== undefined) {

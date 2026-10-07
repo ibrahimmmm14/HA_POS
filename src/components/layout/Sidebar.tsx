@@ -74,19 +74,7 @@ export function Sidebar() {
       href: '/inventory',
       label: t.inventory,
       icon: Package,
-      active: pathname === '/inventory',
-    },
-    {
-      href: '/inventory/transfers',
-      label: t.transfers,
-      icon: ArrowLeftRight,
-      active: pathname.startsWith('/inventory/transfers'),
-    },
-    {
-      href: '/inventory/serials',
-      label: t.serials,
-      icon: Barcode,
-      active: pathname.startsWith('/inventory/serials'),
+      active: pathname.startsWith('/inventory'),
     },
     {
       href: '/messaging',

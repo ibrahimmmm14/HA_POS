@@ -92,3 +92,12 @@ past periods. Export to CSV or print from the page.
 ## Backups
 
 Backups from `npm run db:backup` include the `users` table (password hashes). Treat them as sensitive.
+
+## Warehouses (المستودعات)
+
+- **Create / edit** from Settings → *المستودعات* (administrator only). Each warehouse belongs to one branch; a warehouse that holds stock, serial numbers or open transfers cannot be moved to another branch.
+- **Link to users** in the user dialog (*المستودعات المسموح بها*). Pick one or more warehouses of the user's branches; leave empty to allow every warehouse of their branches. Administrators are never limited.
+- A user only sees stock, serial numbers and transfers of the warehouses they work with, and invoices take stock only from those warehouses.
+- **Stock transfers between warehouses** (same branch or another one) are a popup inside the **المخزون** (Inventory) screen: pending → sent (needs the sending warehouse) → received (needs the receiving warehouse); a transfer can be cancelled by the sender before receipt. The quantity must be available in the sending warehouse. Stock moves when the receiver confirms.
+- **Serial number lookup** is a popup in the Inventory screen. It shows the product and where the unit is even when it sits in another warehouse or branch; the patient and invoice are shown only when they belong to the user's branches.
+- The old pages `/inventory/transfers` and `/inventory/serials` redirect to `/inventory`.
