@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/components/common/LanguageContext';
 import { useBranch } from '@/components/common/BranchContext';
+import ItemsManager from '@/components/settings/ItemsManager';
 import {
   Settings,
   Building,
@@ -14,6 +15,7 @@ import {
   PlusCircle,
   Pencil,
   Warehouse,
+  Package,
 } from 'lucide-react';
 
 type AddKind = 'branch' | 'warehouse' | 'hospital' | 'doctor' | 'insurance';
@@ -115,7 +117,10 @@ export default function SettingsPage() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [insurance, setInsurance] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'branches' | 'warehouses' | 'doctors' | 'insurance' | 'tax'>('branches');
+  // warehouse overview: stock per warehouse and the users who work with each one
+  const [stockItems, setStockItems] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'branches' | 'items' | 'warehouses' | 'doctors' | 'insurance' | 'tax'>('branches');
 
   // Add dialog state
   const [addKind, setAddKind] = useState<AddKind | null>(null);
@@ -133,8 +138,14 @@ export default function SettingsPage() {
         if (data.insuranceCompanies) setInsurance(data.insuranceCompanies);
       });
 
+  const loadWarehouseOverview = () => {
+    fetch('/api/items').then((r) => r.json()).then((d) => d.items && setStockItems(d.items)).catch(() => {});
+    fetch('/api/users').then((r) => r.json()).then((d) => d.users && setStaff(d.users)).catch(() => {});
+  };
+
   useEffect(() => {
     loadMasterData();
+    loadWarehouseOverview();
   }, []);
 
   const openAdd = (kind: AddKind) => {
@@ -188,7 +199,7 @@ export default function SettingsPage() {
       }
       setAddKind(null);
       setEditId(null);
-      if (addKind === 'branch' || addKind === 'warehouse') await refreshBranches();
+      if (addKind === 'branch' || addKind === 'warehouse') { await refreshBranches(); loadWarehouseOverview(); }
       else await loadMasterData();
     } catch (err) {
       console.error(err);
@@ -239,6 +250,7 @@ export default function SettingsPage() {
       <div className="flex items-center gap-2 border-b border-gray-200 text-xs font-bold">
         {[
           { id: 'branches', label: t.branches, icon: Building },
+          { id: 'items', label: lang === 'ar' ? 'الأصناف' : 'Items', icon: Package },
           { id: 'warehouses', label: lang === 'ar' ? 'المستودعات' : 'Warehouses', icon: Warehouse },
           { id: 'doctors', label: 'الأطباء والمستشفيات', icon: Users },
           { id: 'insurance', label: 'شركات التأمين الطبي', icon: ShieldCheck },
@@ -297,6 +309,9 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Tab: Items */}
+      {activeTab === 'items' && <ItemsManager />}
+
       {/* Tab: Warehouses */}
       {activeTab === 'warehouses' && (
         <div className="space-y-4">
@@ -309,17 +324,38 @@ export default function SettingsPage() {
                     <th className="p-3 text-start">{lang === 'ar' ? 'الرمز' : 'Code'}</th>
                     <th className="p-3 text-start">{lang === 'ar' ? 'المستودع' : 'Warehouse'}</th>
                     <th className="p-3 text-start">{lang === 'ar' ? 'الفرع' : 'Branch'}</th>
+                    <th className="p-3 text-center">{lang === 'ar' ? 'عدد الأصناف' : 'Items'}</th>
+                    <th className="p-3 text-center">{lang === 'ar' ? 'إجمالي الوحدات' : 'Units'}</th>
+                    <th className="p-3 text-start">{lang === 'ar' ? 'المستخدمون المسؤولون' : 'Managed by'}</th>
                     <th className="p-3 text-center w-16">{lang === 'ar' ? 'تعديل' : 'Edit'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {warehouses.map((w) => {
                     const br = branches.find((b) => b.id === w.branchId);
+                    const held = stockItems.filter((i) => (i.stockByWarehouse?.[w.id] || 0) > 0);
+                    const units = held.reduce((n, i) => n + (i.stockByWarehouse[w.id] || 0), 0);
+                    // users of the warehouse's branch who are not limited to other warehouses
+                    const managers = staff.filter(
+                      (u) => u.active && u.role !== 'super_admin' && u.branchIds.includes(w.branchId) &&
+                        (!u.warehouseIds || u.warehouseIds.length === 0 || u.warehouseIds.includes(w.id))
+                    );
                     return (
                       <tr key={w.id} className="hover:bg-slate-50">
                         <td className="p-3 font-mono text-blue-700 font-bold">{w.code}</td>
                         <td className="p-3 font-bold text-gray-900">{lang === 'ar' ? w.nameAr : w.nameEn}</td>
                         <td className="p-3 text-gray-700">{br ? (lang === 'ar' ? br.nameAr : br.nameEn) : '-'}</td>
+                        <td className="p-3 text-center font-mono font-bold">{held.length}</td>
+                        <td className="p-3 text-center font-mono">{units}</td>
+                        <td className="p-3 text-gray-700">
+                          {managers.length === 0
+                            ? <span className="text-gray-400">{lang === 'ar' ? 'لا أحد (غير المدير)' : 'None'}</span>
+                            : managers.map((u) => (
+                                <span key={u.id} className="inline-block me-1 mb-1 px-2 py-0.5 rounded bg-slate-100 text-[11px]">
+                                  {lang === 'ar' ? u.nameAr : u.nameEn || u.nameAr}
+                                </span>
+                              ))}
+                        </td>
                         <td className="p-3 text-center">{editButton('warehouse', w)}</td>
                       </tr>
                     );

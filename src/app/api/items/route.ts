@@ -65,11 +65,11 @@ async function POSTHandler(request: Request) {
       const itemData = body.data || {};
       const id = itemData.id || `item-${Date.now()}`;
 
-      const stockObj = itemData.stockByWarehouse || {
-        'wh-01': 10,
-        'wh-02': 5,
-        'wh-03': 5,
-      };
+      const stockObj = itemData.stockByWarehouse || {};
+
+      if (itemData.sku && (await prisma.item.findUnique({ where: { sku: itemData.sku } }))) {
+        return NextResponse.json({ error: 'sku_taken' }, { status: 409 });
+      }
 
       const created = await prisma.item.create({
         data: {
