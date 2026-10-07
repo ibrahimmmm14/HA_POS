@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ShieldCheck, UserPlus, Pencil, KeyRound, Users as UsersIcon, History, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/components/common/LanguageContext';
 import { useBranch } from '@/components/common/BranchContext';
-import { PERMISSIONS, Permission, ROLES, ROLE_DEFAULTS, Role } from '@/lib/permissions';
+import { PERMISSIONS, Permission, ROLES, ROLE_DEFAULTS, Role, isAdminOnly } from '@/lib/permissions';
 
 interface ManagedUser {
   id: string;
@@ -155,7 +155,7 @@ export default function UsersPage() {
     setBranchIds(u.branchIds);
     setActive(u.active);
     setCustomPerms(!!u.permissionOverride);
-    setPerms(u.permissionOverride ?? [...ROLE_DEFAULTS[u.role]]);
+    setPerms((u.permissionOverride ?? ROLE_DEFAULTS[u.role]).filter((p) => !isAdminOnly(p)));
     setFormError('');
     setDialog({ type: 'edit', user: u });
   };
@@ -209,7 +209,7 @@ export default function UsersPage() {
   const submitUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dialog || dialog.type === 'password') return;
-    const permissions = customPerms ? perms : null;
+    const permissions = customPerms ? perms.filter((p) => !isAdminOnly(p)) : null;
     const ok =
       dialog.type === 'create'
         ? await send('/api/users', 'POST', { username, nameAr, nameEn, role, branchIds, password, permissions })
@@ -538,11 +538,17 @@ export default function UsersPage() {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {PERMISSIONS.map((p) => {
-                    const checked = role === 'super_admin' || perms.includes(p.key);
+                    // Settings, adding items, prices, imports, records and users belong to the system administrator only
+                    const locked = isAdminOnly(p.key) && role !== 'super_admin';
+                    const checked = role === 'super_admin' || (!locked && perms.includes(p.key));
+                    const editable = customPerms && role !== 'super_admin' && !locked;
                     return (
-                      <label key={p.key} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${customPerms && role !== 'super_admin' ? 'cursor-pointer hover:bg-gray-50' : 'opacity-70'}`}>
-                        <input type="checkbox" checked={checked} disabled={!customPerms || role === 'super_admin'} onChange={() => togglePerm(p.key)} />
+                      <label key={p.key} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${editable ? 'cursor-pointer hover:bg-gray-50' : 'opacity-70'}`}>
+                        <input type="checkbox" checked={checked} disabled={!editable} onChange={() => togglePerm(p.key)} />
                         <span className="text-gray-800">{ar ? p.ar : p.en}</span>
+                        {locked && (
+                          <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{ar ? 'مدير النظام فقط' : 'Admin only'}</span>
+                        )}
                       </label>
                     );
                   })}

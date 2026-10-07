@@ -28,13 +28,38 @@ A *System administrator* (`super_admin`) always has every permission.
 | --- | --- |
 | `dashboard`, `pos`, `invoices`, `earmolds`, `repairs`, `clients` | the matching screens |
 | `inventory`, `serials`, `transfers` | stock, serial numbers, branch transfers |
-| `inventory_prices` | editing item prices (single and per category) |
-| `messaging`, `migration`, `records` | messaging, data import, database records |
+| `items_add` | adding new items to the catalogue **(administrator only)** |
+| `inventory_prices` | editing item prices, single and per category **(administrator only)** |
+| `messaging` | messaging |
+| `migration`, `records` | data import, raw database records **(administrator only)** |
 | `reports`, `finance` | reports and the finance report |
-| `settings` | branches, hospitals, doctors, insurance companies |
-| `users` | this screen: users, permissions, sign-in log |
+| `settings` | branches, hospitals, doctors, insurance companies (master data) **(administrator only)** |
+| `users` | this screen: users, permissions, sign-in log **(administrator only)** |
 
-Users are also limited to the branches assigned to them (the finance report only shows those branches).
+### Administrator-only permissions
+
+`settings`, `items_add`, `inventory_prices`, `migration`, `records` and `users` can only be held by a
+*System administrator*. They are not part of any other role, the permissions screen shows them locked, and
+the server ignores them even if an old custom list contains them. Everyone can still *read* master data
+(branches, doctors, hospitals, insurance companies) and the item list, because invoices and POS need them.
+
+## Branch isolation
+
+Everyone except a system administrator only sees the data of the branch(es) assigned to them.
+This is enforced on the server in every route, not just hidden in the menus:
+
+| Data | Rule |
+| --- | --- |
+| Patients | each patient file belongs to one branch (`clients.branchId`); other branches' patients cannot be listed, opened or edited, and only an administrator can move a patient |
+| Invoices, repairs | by their own branch; creating one for another branch, a patient of another branch, or from another branch's warehouse is refused |
+| Lab orders, audiograms, messages | follow the patient's branch; converting a lab order creates the invoice in the patient's branch |
+| Items | the catalogue is shared, but stock levels and serial numbers only show the user's own warehouses |
+| Transfers | a branch sees what it sends and receives; only the **sending** branch dispatches or cancels, only the **receiving** branch confirms receipt |
+| Dashboard, reports, finance, activity log | only the user's branches |
+
+A record of another branch is reported as "not found", so its existence is not revealed.
+Existing patients were assigned to the branch of their first invoice (otherwise their first repair, otherwise the first branch).
+Audit-log entries now record the real user and branch that made the change.
 
 ## Managing users (Users & Permissions screen)
 

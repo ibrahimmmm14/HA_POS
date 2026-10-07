@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapItem, logAudit } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { branchScope, currentUser, guarded, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,14 +10,28 @@ async function GETHandler(request: Request) {
     const category = searchParams.get('category');
     const search = searchParams.get('search')?.toLowerCase().trim();
 
-    const [rawItems, serialUnits] = await Promise.all([
+    // The catalogue is shared, but stock levels and serial numbers are per branch
+    const user = currentUser(request);
+    const scope = branchScope(user);
+    const [rawItems, serialUnits, scopedWarehouses] = await Promise.all([
       prisma.item.findMany({
         orderBy: { nameAr: 'asc' },
       }),
-      prisma.serialUnit.findMany(),
+      prisma.serialUnit.findMany({ where: { branchId: scopeFilter(user) } }),
+      scope ? prisma.warehouse.findMany({ where: { branchId: { in: scope } }, select: { id: true } }) : Promise.resolve(null),
     ]);
+    const allowedWarehouses = scopedWarehouses && new Set(scopedWarehouses.map((w) => w.id));
 
-    let items = rawItems.map(mapItem);
+    let items = rawItems.map(mapItem).map((item) =>
+      allowedWarehouses
+        ? {
+            ...item,
+            stockByWarehouse: Object.fromEntries(
+              Object.entries(item.stockByWarehouse).filter(([wh]) => allowedWarehouses.has(wh))
+            ),
+          }
+        : item
+    );
 
     if (category && category !== 'all') {
       items = items.filter((item) => item.category === category);

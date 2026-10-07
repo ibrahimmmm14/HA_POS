@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, resolveBranchId, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,9 @@ async function GETHandler(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search')?.toLowerCase().trim();
 
+    // Non-administrators only see the patients of their own branch(es)
     const clients = await prisma.client.findMany({
+      where: { branchId: scopeFilter(currentUser(request)) },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -36,6 +38,9 @@ async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
 
+    const branchId = await resolveBranchId(currentUser(request), body.branchId);
+    if (!branchId) return NextResponse.json({ error: 'no_branch' }, { status: 400 });
+
     const id = body.id || `cl-${Date.now()}`;
     const fileNo =
       body.fileNo ||
@@ -46,6 +51,7 @@ async function POSTHandler(request: Request) {
       data: {
         id,
         fileNo,
+        branchId,
         nationalId: body.nationalId || '',
         nameAr: body.nameAr || '',
         nameEn: body.nameEn || '',

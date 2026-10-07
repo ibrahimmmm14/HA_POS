@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
 import { nowStamp } from '@/lib/repairs';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope, resolveBranchId, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +26,7 @@ async function GETHandler(request: Request) {
 
     const tickets = await prisma.repairTicket.findMany({
       where: {
+        branchId: scopeFilter(currentUser(request)),
         ...(status && status !== 'all' ? { status } : {}),
         ...(clientId ? { clientId } : {}),
         ...(serialNumber ? { serialNumber } : {}),
@@ -53,6 +54,7 @@ async function GETHandler(request: Request) {
 
 async function POSTHandler(request: Request) {
   try {
+    const user = currentUser(request);
     const body = await request.json();
 
     if (!body.clientId || !body.issue?.trim()) {
@@ -64,20 +66,22 @@ async function POSTHandler(request: Request) {
 
     const client = await prisma.client.findUnique({
       where: { id: body.clientId },
-      select: { id: true, nameAr: true },
+      select: { id: true, nameAr: true, branchId: true },
     });
-    if (!client) {
+    if (!client || !inScope(user, client.branchId)) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     }
 
     // If a serial number is given, pull device details and warranty from inventory
     const serialNumber: string | null = body.serialNumber?.trim() || null;
-    const unit = serialNumber
+    const foundUnit = serialNumber
       ? await prisma.serialUnit.findUnique({
           where: { serialNumber },
           include: { item: { select: { brand: true, model: true } } },
         })
       : null;
+    // A device registered at another branch is not visible here
+    const unit = foundUnit && inScope(user, foundUnit.branchId) ? foundUnit : null;
 
     const today = new Date().toISOString().split('T')[0];
     const underWarranty =
@@ -89,13 +93,15 @@ async function POSTHandler(request: Request) {
     const userName = body.userName || 'فني الصيانة';
     const id = `rep-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const ticketNo = await nextTicketNo();
+    const branchId = await resolveBranchId(user, body.branchId ?? unit?.branchId);
+    if (!branchId) return NextResponse.json({ error: 'no_branch' }, { status: 400 });
 
     const ticket = await prisma.repairTicket.create({
       data: {
         id,
         ticketNo,
         clientId: client.id,
-        branchId: body.branchId || unit?.branchId || 'br-01',
+        branchId,
         serialNumber,
         deviceBrand: body.deviceBrand || unit?.item.brand || '',
         deviceModel: body.deviceModel || unit?.item.model || '',

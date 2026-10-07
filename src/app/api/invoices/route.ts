@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma, mapInvoice, mapItem, logAudit } from '@/lib/db';
+import { prisma, mapInvoice, mapItem, logAudit, nextInvoiceNo } from '@/lib/db';
 import { InvoiceLine } from '@/types';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +12,15 @@ async function GETHandler(request: Request) {
     const search = searchParams.get('search')?.toLowerCase().trim();
     const clientId = searchParams.get('clientId');
 
+    // Non-administrators only see their own branch(es), whatever branchId they ask for
+    const user = currentUser(request);
+    if (branchId && branchId !== 'all' && !inScope(user, branchId)) {
+      return NextResponse.json({ invoices: [] });
+    }
+
     const invoices = await prisma.invoice.findMany({
       where: {
-        ...(branchId && branchId !== 'all' ? { branchId } : {}),
+        branchId: branchId && branchId !== 'all' ? branchId : scopeFilter(user),
         ...(clientId ? { clientId } : {}),
       },
       include: {
@@ -68,12 +74,29 @@ async function GETHandler(request: Request) {
 
 async function POSTHandler(request: Request) {
   try {
+    const user = currentUser(request);
     const body = await request.json();
 
-    const invoiceCount = await prisma.invoice.count();
-    const invoiceNo =
-      body.invoiceNo ||
-      `INV-${new Date().getFullYear()}-${String(invoiceCount + 92).padStart(4, '0')}`;
+    // The invoice must belong to one of the user's branches, for a patient and warehouse of that branch
+    const branchId: string = body.branchId || user.branchIds[0] || 'br-01';
+    if (!inScope(user, branchId)) {
+      return NextResponse.json({ error: 'forbidden_branch' }, { status: 403 });
+    }
+    const patient = await prisma.client.findUnique({ where: { id: body.clientId ?? '' }, select: { branchId: true } });
+    if (!patient || !inScope(user, patient.branchId)) {
+      return NextResponse.json({ error: 'client_not_found' }, { status: 404 });
+    }
+    const branchWarehouses = new Set(
+      (await prisma.warehouse.findMany({ where: { branchId }, select: { id: true } })).map((w) => w.id)
+    );
+    const usedWarehouses: string[] = [body.warehouseId, ...(body.lines || []).map((l: { warehouseId?: string }) => l.warehouseId)].filter(Boolean);
+    if (usedWarehouses.some((w) => !branchWarehouses.has(w))) {
+      return NextResponse.json({ error: 'warehouse_not_in_branch' }, { status: 403 });
+    }
+    // When none is given, stock comes out of this branch's own warehouse
+    const defaultWarehouse: string = body.warehouseId || Array.from(branchWarehouses)[0] || 'wh-01';
+
+    const invoiceNo: string = body.invoiceNo || (await nextInvoiceNo());
 
     const id = body.id || `inv-${Date.now()}`;
     const lines: InvoiceLine[] = body.lines || [];
@@ -88,7 +111,7 @@ async function POSTHandler(request: Request) {
 
       if (rawItem) {
         const item = mapItem(rawItem);
-        const whId = line.warehouseId || body.warehouseId || 'wh-01';
+        const whId = line.warehouseId || defaultWarehouse;
         const currentStock = item.stockByWarehouse[whId] || 0;
         const newStock = Math.max(0, currentStock - (line.quantity || 1));
         item.stockByWarehouse[whId] = newStock;
@@ -137,8 +160,8 @@ async function POSTHandler(request: Request) {
         date: body.date || new Date().toISOString().split('T')[0],
         deliveryDate:
           body.deliveryDate || new Date().toISOString().replace('T', ' ').substring(0, 16),
-        branchId: body.branchId || 'br-01',
-        warehouseId: body.warehouseId || 'wh-01',
+        branchId,
+        warehouseId: defaultWarehouse,
         costCenter: body.costCenter || 'CC-MAIN-01',
         workshop: body.workshop || 'معمل الرياض المركزي',
         clientId: body.clientId,

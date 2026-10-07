@@ -45,6 +45,7 @@ async function main() {
       update: {},
       create: {
         id,
+        branchId: branch.id,
         fileNo: `F-TEST-${n}`,
         nationalId: `10990000${n}`,
         nameAr,

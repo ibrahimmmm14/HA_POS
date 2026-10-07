@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma, mapInvoice, logAudit } from '@/lib/db';
+import { prisma, mapInvoice, logAudit, nextInvoiceNo } from '@/lib/db';
 import { Invoice } from '@/types';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,8 @@ async function GETHandler(
       include: { client: true },
     });
 
-    if (!order) {
+    // An order of another branch's patient looks exactly like one that does not exist
+    if (!order || !inScope(currentUser(request), order.client?.branchId)) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
@@ -39,7 +40,7 @@ async function PUTHandler(
       include: { client: true },
     });
 
-    if (!prevOrder) {
+    if (!prevOrder || !inScope(currentUser(request), prevOrder.client?.branchId)) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
@@ -108,13 +109,20 @@ async function POSTHandler(
       include: { client: true },
     });
 
-    if (!order) {
+    // An order of another branch's patient looks exactly like one that does not exist
+    if (!order || !inScope(currentUser(request), order.client?.branchId)) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
     const client = order.client;
-    const invoiceCount = await prisma.invoice.count();
-    const invoiceNo = `INV-${new Date().getFullYear()}-${String(invoiceCount + 91).padStart(4, '0')}`;
+    const invoiceBranchId = client?.branchId ?? currentUser(request).branchIds[0] ?? 'br-01';
+    const invoiceWarehouse = await prisma.warehouse.findFirst({
+      where: { branchId: invoiceBranchId },
+      orderBy: { id: 'asc' },
+      select: { id: true },
+    });
+    const invoiceWarehouseId = invoiceWarehouse?.id ?? 'wh-01';
+    const invoiceNo = await nextInvoiceNo();
 
     const grossAmount = order.price;
     const taxAmount = Number((grossAmount * 0.15).toFixed(2));
@@ -137,7 +145,7 @@ async function POSTHandler(
         taxPercent: 15,
         taxAmount,
         totalAmount: grandTotal,
-        warehouseId: 'wh-01',
+        warehouseId: invoiceWarehouseId,
         isDelivered: order.status === 'delivered',
         isReady: true,
         isTrial: false,
@@ -151,8 +159,8 @@ async function POSTHandler(
         invoiceNo,
         date: new Date().toISOString().split('T')[0],
         deliveryDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        branchId: 'br-01',
-        warehouseId: 'wh-01',
+        branchId: invoiceBranchId,
+        warehouseId: invoiceWarehouseId,
         costCenter: 'CC-WORKSHOP-01',
         workshop: order.workshop,
         clientId: order.clientId,

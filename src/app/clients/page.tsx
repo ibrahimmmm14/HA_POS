@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/components/common/LanguageContext';
+import { useBranch } from '@/components/common/BranchContext';
 import { Client } from '@/types';
 import {
   Users,
@@ -18,6 +19,7 @@ import {
 
 export default function ClientsListPage() {
   const { lang, t } = useLanguage();
+  const { currentBranch } = useBranch();
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,7 @@ export default function ClientsListPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          branchId: currentBranch.id,
           nameAr: newNameAr,
           nameEn: newNameAr,
           phone: newPhone,

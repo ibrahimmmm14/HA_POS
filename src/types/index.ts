@@ -130,6 +130,8 @@ export interface Client {
   insurancePolicyNo?: string;
   notes?: string;
   createdAt: string;
+  /** Branch the patient file belongs to */
+  branchId?: string;
 }
 
 export interface Audiogram {

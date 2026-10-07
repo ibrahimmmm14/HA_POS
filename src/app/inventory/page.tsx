@@ -31,7 +31,11 @@ const roundMoney = (n: number) => Math.round(n * 100) / 100;
 
 export default function InventoryPage() {
   const { lang, t } = useLanguage();
-  const { warehouses, currentWarehouse } = useBranch();
+  const { warehouses: allWarehouses, selectableBranches, currentWarehouse, can } = useBranch();
+  // Only the warehouses of the branches this user may see
+  const warehouses = allWarehouses.filter((w) => selectableBranches.some((b) => b.id === w.branchId));
+  const canAddItems = can('items_add');
+  const canEditPrices = can('inventory_prices');
 
   const [items, setItems] = useState<Item[]>([]);
   const [category, setCategory] = useState<string>('all');
@@ -234,6 +238,7 @@ export default function InventoryPage() {
             <Barcode className="w-4 h-4 text-purple-600" />
             <span>{t.serials}</span>
           </Link>
+          {canEditPrices && (
           <button
             onClick={openBulk}
             className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition"
@@ -241,6 +246,8 @@ export default function InventoryPage() {
             <Percent className="w-4 h-4 text-amber-600" />
             <span>{lang === 'ar' ? 'تعديل أسعار فئة' : 'Edit Category Prices'}</span>
           </button>
+          )}
+          {canAddItems && (
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition"
@@ -248,6 +255,7 @@ export default function InventoryPage() {
             <PlusCircle className="w-4 h-4" />
             <span>{lang === 'ar' ? 'إضافة صنف جديد' : 'Add Item'}</span>
           </button>
+          )}
         </div>
       </div>
 
@@ -311,7 +319,7 @@ export default function InventoryPage() {
                 ))}
                 <th className="p-3 text-center">{t.stockQty}</th>
                 <th className="p-3 text-center">{t.status}</th>
-                <th className="p-3 text-center w-16">{lang === 'ar' ? 'تعديل' : 'Edit'}</th>
+                {canEditPrices && <th className="p-3 text-center w-16">{lang === 'ar' ? 'تعديل' : 'Edit'}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -373,6 +381,7 @@ export default function InventoryPage() {
                         </span>
                       )}
                     </td>
+                    {canEditPrices && (
                     <td className="p-3 text-center">
                       <button
                         onClick={() => openPriceEdit(item)}
@@ -382,6 +391,7 @@ export default function InventoryPage() {
                         <Pencil className="w-4 h-4" />
                       </button>
                     </td>
+                    )}
                   </tr>
                 );
               })}
