@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import TransfersDialog from '@/components/inventory/TransfersDialog';
+import SerialsDialog from '@/components/inventory/SerialsDialog';
 import { useLanguage } from '@/components/common/LanguageContext';
 import { useBranch } from '@/components/common/BranchContext';
 import { Item, ItemCategory } from '@/types';
@@ -31,9 +32,9 @@ const roundMoney = (n: number) => Math.round(n * 100) / 100;
 
 export default function InventoryPage() {
   const { lang, t } = useLanguage();
-  const { warehouses: allWarehouses, selectableBranches, currentWarehouse, can } = useBranch();
-  // Only the warehouses of the branches this user may see
-  const warehouses = allWarehouses.filter((w) => selectableBranches.some((b) => b.id === w.branchId));
+  const { myWarehouses: warehouses, currentWarehouse, can } = useBranch();
+  const [showTransfers, setShowTransfers] = useState(false);
+  const [showSerials, setShowSerials] = useState(false);
   const canAddItems = can('items_add');
   const canEditPrices = can('inventory_prices');
 
@@ -224,20 +225,24 @@ export default function InventoryPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Link
-            href="/inventory/transfers"
+          {can('transfers') && (
+          <button
+            onClick={() => setShowTransfers(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition"
           >
             <ArrowLeftRight className="w-4 h-4 text-blue-600" />
-            <span>{t.transfers}</span>
-          </Link>
-          <Link
-            href="/inventory/serials"
+            <span>{lang === 'ar' ? 'التحويل المخزني' : 'Stock Transfer'}</span>
+          </button>
+          )}
+          {can('serials') && (
+          <button
+            onClick={() => setShowSerials(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition"
           >
             <Barcode className="w-4 h-4 text-purple-600" />
-            <span>{t.serials}</span>
-          </Link>
+            <span>{lang === 'ar' ? 'بحث بالرقم التسلسلي' : 'Serial Lookup'}</span>
+          </button>
+          )}
           {canEditPrices && (
           <button
             onClick={openBulk}
@@ -777,6 +782,9 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      {showTransfers && <TransfersDialog onClose={() => setShowTransfers(false)} onChanged={fetchItems} />}
+      {showSerials && <SerialsDialog onClose={() => setShowSerials(false)} />}
     </div>
   );
 }

@@ -59,6 +59,8 @@ export interface AuthedUser {
   role: Role;
   branchIds: string[];
   currentBranchId: string;
+  /** Warehouses the user is limited to (within their branches); null = all warehouses of their branches */
+  warehouseIds: string[] | null;
   permissions: Permission[];
   mustChangePassword: boolean;
 }
@@ -72,9 +74,20 @@ function readCookie(request: Request, name: string): string | undefined {
   return undefined;
 }
 
+/** The stored warehouse limit, or null for "no limit". A system administrator is never limited. */
+function parseWarehouseIds(role: string, raw: string | null): string[] | null {
+  if (role === 'super_admin' || !raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((w) => typeof w === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
 export function toAuthedUser(row: {
   id: string; username: string; nameAr: string; nameEn: string; role: string;
-  branchIds: string; currentBranchId: string; permissions: string | null; mustChangePassword: boolean;
+  branchIds: string; currentBranchId: string; permissions: string | null; warehouseIds: string | null; mustChangePassword: boolean;
 }): AuthedUser {
   let branchIds: string[] = [];
   try {
@@ -91,6 +104,7 @@ export function toAuthedUser(row: {
     role: row.role as Role,
     branchIds,
     currentBranchId: row.currentBranchId,
+    warehouseIds: parseWarehouseIds(row.role, row.warehouseIds),
     permissions: effectivePermissions(row.role, parsePermissionOverride(row.permissions)),
     mustChangePassword: row.mustChangePassword,
   };
@@ -138,6 +152,24 @@ export function branchScope(user: AuthedUser): string[] | null {
 export function inScope(user: AuthedUser, branchId: string | null | undefined): boolean {
   const scope = branchScope(user);
   return scope === null || (!!branchId && scope.includes(branchId));
+}
+
+/**
+ * Warehouses the user may work with: those of their branches, narrowed to their own list if they have one.
+ * Returns null for "every warehouse" (administrator).
+ */
+export async function allowedWarehouses(user: AuthedUser): Promise<Set<string> | null> {
+  const scope = branchScope(user);
+  if (scope === null) return null;
+  const rows = await prisma.warehouse.findMany({ where: { branchId: { in: scope } }, select: { id: true } });
+  const ids = rows.map((w) => w.id).filter((id) => !user.warehouseIds || user.warehouseIds.includes(id));
+  return new Set(ids);
+}
+
+/** Prisma filter on a warehouse column; undefined (no filter) for an administrator. */
+export async function warehouseFilter(user: AuthedUser): Promise<{ in: string[] } | undefined> {
+  const allowed = await allowedWarehouses(user);
+  return allowed === null ? undefined : { in: Array.from(allowed) };
 }
 
 /** Prisma filter on a branch column: `{ branchId: scopeFilter(user) }` — undefined (no filter) for an administrator. */
@@ -216,4 +248,13 @@ export async function logLoginEvent(
   } catch (error) {
     console.error('Failed to write login log:', error);
   }
+}
+
+/** Warehouses a user is limited to: must belong to the user's branches. null/empty = no limit. */
+export async function cleanWarehouseIds(raw: unknown, branchIds: string[]): Promise<string[] | null | 'invalid'> {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const rows = await prisma.warehouse.findMany({ where: { branchId: { in: branchIds } }, select: { id: true } });
+  const ok = new Set(rows.map((w) => w.id));
+  const ids = raw.filter((w): w is string => typeof w === 'string');
+  return ids.every((w) => ok.has(w)) ? Array.from(new Set(ids)) : 'invalid';
 }

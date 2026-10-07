@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapStockTransfer, mapItem, logAudit } from '@/lib/db';
 import { StockTransfer } from '@/types';
-import { branchScope, currentUser, guarded, inScope } from '@/lib/auth';
+import { allowedWarehouses, currentUser, guarded } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 type TransferItem = StockTransfer['items'][number];
+
+/** The id of the first item the warehouse does not hold enough of, if any. */
+async function insufficientStock(warehouseId: string, items: TransferItem[]): Promise<string | null> {
+  for (const line of items) {
+    if (!line.quantity || line.quantity < 1) return line.itemId;
+    const raw = await prisma.item.findUnique({ where: { id: line.itemId } });
+    if (!raw) return line.itemId;
+    if ((mapItem(raw).stockByWarehouse[warehouseId] || 0) < line.quantity) return line.itemId;
+  }
+  return null;
+}
 
 // pending -> in_transit (sent) -> completed (received); either of the first two can be cancelled
 const TRANSITIONS: Record<string, string[]> = {
@@ -15,10 +26,11 @@ const TRANSITIONS: Record<string, string[]> = {
 
 async function GETHandler(request: Request) {
   try {
-    // A branch sees the transfers it sends and the ones it receives
-    const scope = branchScope(currentUser(request));
+    // A user sees the transfers leaving or entering the warehouses they work with
+    const mine = await allowedWarehouses(currentUser(request));
+    const ids = mine ? Array.from(mine) : null;
     const rawTransfers = await prisma.stockTransfer.findMany({
-      where: scope ? { OR: [{ fromBranchId: { in: scope } }, { toBranchId: { in: scope } }] } : undefined,
+      where: ids ? { OR: [{ fromWarehouseId: { in: ids } }, { toWarehouseId: { in: ids } }] } : undefined,
       include: {
         fromBranch: { select: { nameAr: true } },
         toBranch: { select: { nameAr: true } },
@@ -51,20 +63,23 @@ async function POSTHandler(request: Request) {
     const user = currentUser(request);
     const body = await request.json();
 
-    // Stock can only be sent from the user's own branch, between warehouses of the right branches
-    if (!inScope(user, body.fromBranchId)) {
-      return NextResponse.json({ error: 'forbidden_branch' }, { status: 403 });
-    }
-    if (body.fromBranchId === body.toBranchId) {
-      return NextResponse.json({ error: 'same_branch' }, { status: 400 });
+    // Stock is sent from a warehouse the user works with to a different warehouse (any branch)
+    const mine = await allowedWarehouses(user);
+    if (body.fromWarehouseId === body.toWarehouseId) {
+      return NextResponse.json({ error: 'same_warehouse' }, { status: 400 });
     }
     const [fromWh, toWh] = await Promise.all([
       prisma.warehouse.findUnique({ where: { id: body.fromWarehouseId ?? '' }, select: { branchId: true } }),
       prisma.warehouse.findUnique({ where: { id: body.toWarehouseId ?? '' }, select: { branchId: true } }),
     ]);
-    if (fromWh?.branchId !== body.fromBranchId || toWh?.branchId !== body.toBranchId) {
-      return NextResponse.json({ error: 'warehouse_not_in_branch' }, { status: 400 });
+    if (!fromWh || !toWh) {
+      return NextResponse.json({ error: 'warehouse_not_found' }, { status: 400 });
     }
+    if (mine && !mine.has(body.fromWarehouseId)) {
+      return NextResponse.json({ error: 'forbidden_warehouse' }, { status: 403 });
+    }
+    const lacking = await insufficientStock(body.fromWarehouseId, body.items || []);
+    if (lacking) return NextResponse.json({ error: 'insufficient_stock', itemId: lacking }, { status: 409 });
 
     const count = await prisma.stockTransfer.count();
     const transferNo =
@@ -77,12 +92,12 @@ async function POSTHandler(request: Request) {
       data: {
         id: body.id || `tr-${Date.now()}`,
         transferNo,
-        fromBranchId: body.fromBranchId,
+        fromBranchId: fromWh.branchId,
         fromWarehouseId: body.fromWarehouseId,
-        toBranchId: body.toBranchId,
+        toBranchId: toWh.branchId,
         toWarehouseId: body.toWarehouseId,
         status: 'pending',
-        requestedBy: body.requestedBy || 'أمين المستودع',
+        requestedBy: user.nameAr,
         approvedBy: body.approvedBy || null,
         receivedBy: body.receivedBy || null,
         items: JSON.stringify(items),
@@ -118,8 +133,11 @@ async function PUTHandler(request: Request) {
       where: { id },
     });
 
-    // A transfer that does not involve the user's branches looks like one that does not exist
-    if (!prevTransferRaw || !(inScope(user, prevTransferRaw.fromBranchId) || inScope(user, prevTransferRaw.toBranchId))) {
+    const mine = await allowedWarehouses(user);
+    const touches = (wh: string) => mine === null || mine.has(wh);
+
+    // A transfer that does not involve the user's warehouses looks like one that does not exist
+    if (!prevTransferRaw || !(touches(prevTransferRaw.fromWarehouseId) || touches(prevTransferRaw.toWarehouseId))) {
       return NextResponse.json({ error: 'Transfer not found' }, { status: 404 });
     }
 
@@ -129,10 +147,14 @@ async function PUTHandler(request: Request) {
     if (!(TRANSITIONS[prevStatus] ?? []).includes(status)) {
       return NextResponse.json({ error: 'invalid_transition' }, { status: 409 });
     }
-    // The sending branch dispatches or cancels; the receiving branch confirms receipt
-    const actingBranch = status === 'completed' ? prevTransfer.toBranchId : prevTransfer.fromBranchId;
-    if (!inScope(user, actingBranch)) {
-      return NextResponse.json({ error: 'forbidden_branch' }, { status: 403 });
+    // The sending warehouse dispatches or cancels; the receiving warehouse confirms receipt
+    const actingWarehouse = status === 'completed' ? prevTransfer.toWarehouseId : prevTransfer.fromWarehouseId;
+    if (!touches(actingWarehouse)) {
+      return NextResponse.json({ error: 'forbidden_warehouse' }, { status: 403 });
+    }
+    if (status === 'in_transit' || status === 'completed') {
+      const lacking = await insufficientStock(prevTransfer.fromWarehouseId, prevTransfer.items);
+      if (lacking) return NextResponse.json({ error: 'insufficient_stock', itemId: lacking }, { status: 409 });
     }
 
     let completedAt = prevTransfer.completedAt;
@@ -169,7 +191,7 @@ async function PUTHandler(request: Request) {
         if (itemTr.serials && itemTr.serials.length > 0) {
           for (const sn of itemTr.serials) {
             await prisma.serialUnit.updateMany({
-              where: { serialNumber: sn },
+              where: { serialNumber: sn, warehouseId: prevTransfer.fromWarehouseId },
               data: {
                 branchId: prevTransfer.toBranchId,
                 warehouseId: prevTransfer.toWarehouseId,

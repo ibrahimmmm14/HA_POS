@@ -14,7 +14,7 @@ export const ar = {
   clients: 'المرضى والعملاء',
   newClient: 'مريض جديد',
   audiogram: 'مخطط السمع',
-  inventory: 'المستودعات والمخزون',
+  inventory: 'المخزون',
   transfers: 'التحويلات بين الفروع',
   serials: 'الأرقام التسلسلية (السماعات)',
   messaging: 'رسائل واتساب و SMS',

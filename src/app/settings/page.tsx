@@ -13,9 +13,10 @@ import {
   CheckCircle2,
   PlusCircle,
   Pencil,
+  Warehouse,
 } from 'lucide-react';
 
-type AddKind = 'branch' | 'hospital' | 'doctor' | 'insurance';
+type AddKind = 'branch' | 'warehouse' | 'hospital' | 'doctor' | 'insurance';
 
 interface FieldDef {
   name: string;
@@ -23,6 +24,8 @@ interface FieldDef {
   labelEn: string;
   required?: boolean;
   type?: 'text' | 'tel' | 'number' | 'select' | 'checkbox';
+  /** what a select lists (hospitals by default) */
+  options?: 'branches';
   dir?: 'ltr';
 }
 
@@ -44,6 +47,19 @@ const FORMS: Record<
       { name: 'addressAr', labelAr: 'العنوان', labelEn: 'Address' },
       { name: 'phone', labelAr: 'الهاتف', labelEn: 'Phone', type: 'tel', dir: 'ltr' },
       { name: 'taxNumber', labelAr: 'الرقم الضريبي', labelEn: 'Tax number', dir: 'ltr' },
+    ],
+  },
+  warehouse: {
+    titleAr: 'إضافة مستودع جديد',
+    titleEn: 'Add New Warehouse',
+    editTitleAr: 'تعديل بيانات المستودع',
+    editTitleEn: 'Edit Warehouse',
+    endpoint: '/api/warehouses',
+    fields: [
+      { name: 'code', labelAr: 'رمز المستودع', labelEn: 'Warehouse code', required: true, dir: 'ltr' },
+      { name: 'nameAr', labelAr: 'اسم المستودع (عربي)', labelEn: 'Warehouse name (Arabic)', required: true },
+      { name: 'nameEn', labelAr: 'اسم المستودع (إنجليزي)', labelEn: 'Warehouse name (English)', dir: 'ltr' },
+      { name: 'branchId', labelAr: 'الفرع', labelEn: 'Branch', required: true, type: 'select', options: 'branches' },
     ],
   },
   hospital: {
@@ -99,7 +115,7 @@ export default function SettingsPage() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [hospitals, setHospitals] = useState<any[]>([]);
   const [insurance, setInsurance] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'branches' | 'doctors' | 'insurance' | 'tax'>('branches');
+  const [activeTab, setActiveTab] = useState<'branches' | 'warehouses' | 'doctors' | 'insurance' | 'tax'>('branches');
 
   // Add dialog state
   const [addKind, setAddKind] = useState<AddKind | null>(null);
@@ -154,6 +170,15 @@ export default function SettingsPage() {
         body: JSON.stringify(form),
       });
       if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (err.error === 'warehouse_not_empty') {
+          setFormError(
+            lang === 'ar'
+              ? 'لا يمكن نقل مستودع به أرصدة أو أرقام تسلسلية أو تحويلات معلقة إلى فرع آخر. حوّل الأصناف أولاً.'
+              : 'A warehouse holding stock, serial numbers or open transfers cannot move to another branch. Transfer the stock out first.'
+          );
+          return;
+        }
         setFormError(
           lang === 'ar'
             ? 'تعذر الحفظ. تأكد من البيانات (قد يكون الرمز مستخدماً من قبل).'
@@ -163,7 +188,7 @@ export default function SettingsPage() {
       }
       setAddKind(null);
       setEditId(null);
-      if (addKind === 'branch') await refreshBranches();
+      if (addKind === 'branch' || addKind === 'warehouse') await refreshBranches();
       else await loadMasterData();
     } catch (err) {
       console.error(err);
@@ -214,6 +239,7 @@ export default function SettingsPage() {
       <div className="flex items-center gap-2 border-b border-gray-200 text-xs font-bold">
         {[
           { id: 'branches', label: t.branches, icon: Building },
+          { id: 'warehouses', label: lang === 'ar' ? 'المستودعات' : 'Warehouses', icon: Warehouse },
           { id: 'doctors', label: 'الأطباء والمستشفيات', icon: Users },
           { id: 'insurance', label: 'شركات التأمين الطبي', icon: ShieldCheck },
           { id: 'tax', label: 'إعدادات الضريبة والفواتير', icon: Percent },
@@ -268,6 +294,45 @@ export default function SettingsPage() {
             </div>
           ))}
         </div>
+        </div>
+      )}
+
+      {/* Tab: Warehouses */}
+      {activeTab === 'warehouses' && (
+        <div className="space-y-4">
+          <div className="flex justify-end">{addButton('warehouse', 'إضافة مستودع', 'Add Warehouse')}</div>
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-start">
+                <thead className="bg-slate-900 text-white font-semibold">
+                  <tr>
+                    <th className="p-3 text-start">{lang === 'ar' ? 'الرمز' : 'Code'}</th>
+                    <th className="p-3 text-start">{lang === 'ar' ? 'المستودع' : 'Warehouse'}</th>
+                    <th className="p-3 text-start">{lang === 'ar' ? 'الفرع' : 'Branch'}</th>
+                    <th className="p-3 text-center w-16">{lang === 'ar' ? 'تعديل' : 'Edit'}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {warehouses.map((w) => {
+                    const br = branches.find((b) => b.id === w.branchId);
+                    return (
+                      <tr key={w.id} className="hover:bg-slate-50">
+                        <td className="p-3 font-mono text-blue-700 font-bold">{w.code}</td>
+                        <td className="p-3 font-bold text-gray-900">{lang === 'ar' ? w.nameAr : w.nameEn}</td>
+                        <td className="p-3 text-gray-700">{br ? (lang === 'ar' ? br.nameAr : br.nameEn) : '-'}</td>
+                        <td className="p-3 text-center">{editButton('warehouse', w)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-500">
+            {lang === 'ar'
+              ? 'اربط كل مستخدم بمستودع أو أكثر من شاشة المستخدمين، وحوّل الأصناف بين المستودعات من شاشة المخزون.'
+              : 'Link users to warehouses from the Users screen, and move stock between warehouses from the Inventory screen.'}
+          </p>
         </div>
       )}
 
@@ -464,7 +529,7 @@ export default function SettingsPage() {
                       className="w-full border border-gray-300 rounded-lg p-2 bg-white"
                     >
                       <option value="">{lang === 'ar' ? '— اختر —' : '— Select —'}</option>
-                      {hospitals.map((h) => (
+                      {(f.options === 'branches' ? branches : hospitals).map((h: any) => (
                         <option key={h.id} value={h.id}>
                           {lang === 'ar' ? h.nameAr : h.nameEn}
                         </option>

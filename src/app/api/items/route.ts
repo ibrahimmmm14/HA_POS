@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapItem, logAudit } from '@/lib/db';
-import { branchScope, currentUser, guarded, scopeFilter } from '@/lib/auth';
+import { allowedWarehouses as loadAllowedWarehouses, currentUser, guarded } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,15 +12,15 @@ async function GETHandler(request: Request) {
 
     // The catalogue is shared, but stock levels and serial numbers are per branch
     const user = currentUser(request);
-    const scope = branchScope(user);
-    const [rawItems, serialUnits, scopedWarehouses] = await Promise.all([
+    const allowedWarehouses = await loadAllowedWarehouses(user);
+    const [rawItems, serialUnits] = await Promise.all([
       prisma.item.findMany({
         orderBy: { nameAr: 'asc' },
       }),
-      prisma.serialUnit.findMany({ where: { branchId: scopeFilter(user) } }),
-      scope ? prisma.warehouse.findMany({ where: { branchId: { in: scope } }, select: { id: true } }) : Promise.resolve(null),
+      prisma.serialUnit.findMany({
+        where: allowedWarehouses ? { warehouseId: { in: Array.from(allowedWarehouses) } } : undefined,
+      }),
     ]);
-    const allowedWarehouses = scopedWarehouses && new Set(scopedWarehouses.map((w) => w.id));
 
     let items = rawItems.map(mapItem).map((item) =>
       allowedWarehouses

@@ -14,7 +14,7 @@ export const en = {
   clients: 'Clients / Patients',
   newClient: 'New Patient',
   audiogram: 'Audiogram',
-  inventory: 'Inventory & Warehouses',
+  inventory: 'Inventory',
   transfers: 'Branch Transfers',
   serials: 'Serial Numbers (HA)',
   messaging: 'WhatsApp & SMS',

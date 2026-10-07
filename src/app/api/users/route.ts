@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
-import { getSessionUser, guarded, hashPassword, passwordProblem, toAuthedUser } from '@/lib/auth';
+import { cleanWarehouseIds, getSessionUser, guarded, hashPassword, passwordProblem, toAuthedUser } from '@/lib/auth';
 import { isPermission, isRole, parsePermissionOverride } from '@/lib/permissions';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +24,8 @@ function publicUser(row: Parameters<typeof toAuthedUser>[0] & { active: boolean;
     // null = follows the role's defaults
     permissionOverride: parsePermissionOverride(row.permissions),
     permissions: authed.permissions,
+    // null = every warehouse of the user's branches
+    warehouseIds: authed.warehouseIds,
   };
 }
 
@@ -60,6 +62,9 @@ export const POST = guarded(async (request: Request) => {
     const exists = await prisma.user.findFirst({ where: { username: { equals: username, mode: 'insensitive' } } });
     if (exists) return NextResponse.json({ error: 'username_taken' }, { status: 409 });
 
+    const warehouseIds = await cleanWarehouseIds(body.warehouseIds, branchIds);
+    if (warehouseIds === 'invalid') return NextResponse.json({ error: 'warehouse_not_in_branch' }, { status: 400 });
+
     const override = Array.isArray(body.permissions) ? body.permissions.filter(isPermission) : null;
 
     const created = await prisma.user.create({
@@ -73,6 +78,7 @@ export const POST = guarded(async (request: Request) => {
         currentBranchId: branchIds[0],
         passwordHash: await hashPassword(body.password),
         permissions: override ? JSON.stringify(override) : null,
+        warehouseIds: warehouseIds && warehouseIds.length ? JSON.stringify(warehouseIds) : null,
         active: true,
         mustChangePassword: true,
         createdAt: new Date().toISOString(),

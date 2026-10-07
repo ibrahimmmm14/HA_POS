@@ -8,6 +8,8 @@ import { Permission } from '@/lib/permissions';
 export interface SessionUser extends User {
   permissions: Permission[];
   mustChangePassword: boolean;
+  /** Warehouses the user is limited to; null = all warehouses of their branches */
+  warehouseIds?: string[] | null;
 }
 
 export type AuthStatus = 'loading' | 'signedIn' | 'signedOut';
@@ -28,6 +30,8 @@ interface BranchContextType {
   warehouses: Warehouse[];
   currentBranch: Branch;
   currentWarehouse: Warehouse;
+  /** Warehouses the signed-in user may work with (all of them for a system administrator) */
+  myWarehouses: Warehouse[];
   setCurrentBranchId: (id: string) => void;
   /** Branches the signed-in user may switch to (all of them for a system administrator) */
   selectableBranches: Branch[];
@@ -138,8 +142,17 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
   const currentBranch =
     branches.find((b) => b.id === currentBranchId) || branches[0];
+  const myWarehouses = warehouses.filter(
+    (w) =>
+      selectableBranches.some((b) => b.id === w.branchId) &&
+      (!session?.warehouseIds || session.warehouseIds.includes(w.id))
+  );
+  // Sales and stock screens work against the first warehouse of the branch the user may use
   const currentWarehouse =
-    warehouses.find((w) => w.branchId === currentBranch.id) || warehouses[0];
+    myWarehouses.find((w) => w.branchId === currentBranch.id) ||
+    myWarehouses[0] ||
+    warehouses.find((w) => w.branchId === currentBranch.id) ||
+    warehouses[0];
   const currentUser: User = session ?? NOBODY;
   const permissions: Permission[] = session?.permissions ?? [];
   const can = (permission: Permission) => permissions.includes(permission);
@@ -151,6 +164,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
         warehouses,
         currentBranch,
         currentWarehouse,
+        myWarehouses,
         setCurrentBranchId,
         selectableBranches,
         currentUser,
