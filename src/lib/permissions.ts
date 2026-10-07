@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   { key: 'repairs', ar: 'صيانة الأجهزة', en: 'Device repairs' },
   { key: 'clients', ar: 'المرضى والعملاء', en: 'Patients & clients' },
   { key: 'inventory', ar: 'المستودعات والمخزون', en: 'Inventory' },
+  { key: 'items_add', ar: 'إضافة أصناف جديدة', en: 'Add new items' },
   { key: 'inventory_prices', ar: 'تعديل أسعار الأصناف', en: 'Edit item prices' },
   { key: 'transfers', ar: 'التحويلات بين الفروع', en: 'Branch transfers' },
   { key: 'serials', ar: 'الأرقام التسلسلية', en: 'Serial numbers' },
@@ -35,6 +36,14 @@ export type Permission = (typeof PERMISSIONS)[number]['key'];
 
 export const ALL_PERMISSIONS: Permission[] = PERMISSIONS.map((p) => p.key);
 
+/**
+ * Permissions only a system administrator can hold, whatever role or custom list a user has:
+ * master data and settings, adding items, changing prices, importing data, browsing raw records, user management.
+ */
+export const ADMIN_ONLY: Permission[] = ['settings', 'users', 'items_add', 'inventory_prices', 'migration', 'records'];
+
+export const isAdminOnly = (p: Permission) => ADMIN_ONLY.includes(p);
+
 export const ROLES: { key: Role; ar: string; en: string }[] = [
   { key: 'super_admin', ar: 'مدير النظام', en: 'System administrator' },
   { key: 'branch_manager', ar: 'مدير فرع', en: 'Branch manager' },
@@ -48,9 +57,9 @@ export const ROLE_DEFAULTS: Record<Role, Permission[]> = {
   super_admin: ALL_PERMISSIONS,
   branch_manager: [
     'dashboard', 'pos', 'invoices', 'earmolds', 'repairs', 'clients', 'inventory',
-    'inventory_prices', 'transfers', 'serials', 'messaging', 'reports', 'finance', 'records',
+    'transfers', 'serials', 'messaging', 'reports', 'finance',
   ],
-  accountant: ['dashboard', 'invoices', 'reports', 'finance', 'records'],
+  accountant: ['dashboard', 'invoices', 'reports', 'finance'],
   cashier: ['dashboard', 'pos', 'invoices', 'clients'],
   audiologist: ['dashboard', 'clients', 'earmolds', 'repairs'],
   inventory_officer: ['dashboard', 'inventory', 'transfers', 'serials'],
@@ -78,8 +87,9 @@ export function parsePermissionOverride(raw: string | null | undefined): Permiss
 /** A system administrator always has every permission; others use their override, else their role defaults. */
 export function effectivePermissions(role: string, override: Permission[] | null): Permission[] {
   if (role === 'super_admin') return ALL_PERMISSIONS;
-  if (override) return override;
-  return isRole(role) ? ROLE_DEFAULTS[role] : [];
+  const list = override ?? (isRole(role) ? ROLE_DEFAULTS[role] : []);
+  // Admin-only permissions are never granted to anyone else, even if an old custom list contains them.
+  return list.filter((p) => !isAdminOnly(p));
 }
 
 // ─── What each page / API route needs ─────────────────────────────────────
@@ -107,6 +117,7 @@ const API_RULES: Rule[] = [
   { prefix: '/api/items', methods: ['GET'], need: ['inventory', 'pos', 'invoices', 'transfers', 'serials', 'earmolds', 'repairs'] },
   { prefix: '/api/items/bulk-price', need: ['inventory_prices'] },
   { prefix: '/api/items/', methods: ['PUT'], need: ['inventory_prices'] },
+  { prefix: '/api/items', methods: ['POST'], need: ['items_add'] },
   { prefix: '/api/items', need: ['inventory'] },
 
   { prefix: '/api/clients', methods: ['GET'], need: ['clients', 'invoices', 'pos', 'earmolds', 'repairs', 'messaging'] },

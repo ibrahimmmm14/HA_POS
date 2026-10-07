@@ -1,26 +1,42 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapItem, mapInvoice } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { branchScope, currentUser, guarded, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-async function GETHandler() {
+async function GETHandler(request: Request) {
   try {
     const todayStr = new Date().toISOString().split('T')[0];
     const currentMonthStr = todayStr.substring(0, 7);
 
-    const [rawInvoices, earmoldOrders, rawItems, branches, doctors, hospitals] =
+    // Everything is limited to the user's own branch(es) unless they are an administrator
+    const user = currentUser(request);
+    const scope = branchScope(user);
+
+    const [rawInvoices, earmoldOrders, rawItems, branches, doctors, hospitals, scopedWarehouses] =
       await Promise.all([
-        prisma.invoice.findMany(),
-        prisma.earmoldOrder.findMany(),
+        prisma.invoice.findMany({ where: { branchId: scopeFilter(user) } }),
+        prisma.earmoldOrder.findMany({ where: { client: { branchId: scopeFilter(user) } } }),
         prisma.item.findMany(),
-        prisma.branch.findMany(),
+        prisma.branch.findMany({ where: scope ? { id: { in: scope } } : undefined }),
         prisma.doctor.findMany(),
         prisma.hospital.findMany(),
+        scope ? prisma.warehouse.findMany({ where: { branchId: { in: scope } }, select: { id: true } }) : Promise.resolve(null),
       ]);
 
     const invoices = rawInvoices.map(mapInvoice);
-    const items = rawItems.map(mapItem);
+    const visibleWarehouses = scopedWarehouses && new Set(scopedWarehouses.map((w) => w.id));
+    // Stock counts only cover the warehouses of the user's branches
+    const items = rawItems.map(mapItem).map((item) =>
+      visibleWarehouses
+        ? {
+            ...item,
+            stockByWarehouse: Object.fromEntries(
+              Object.entries(item.stockByWarehouse || {}).filter(([wh]) => visibleWarehouses.has(wh))
+            ),
+          }
+        : item
+    );
 
     // Sales Today
     const todayInvoices = invoices.filter((i) => i.date === todayStr);

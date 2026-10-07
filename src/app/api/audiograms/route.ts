@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapAudiogram, logAudit } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +10,10 @@ async function GETHandler(request: Request) {
     const clientId = searchParams.get('clientId');
 
     const rawAudiograms = await prisma.audiogram.findMany({
-      where: clientId ? { clientId } : undefined,
+      where: {
+        client: { branchId: scopeFilter(currentUser(request)) },
+        ...(clientId ? { clientId } : {}),
+      },
       orderBy: { date: 'desc' },
     });
 
@@ -26,6 +29,11 @@ async function GETHandler(request: Request) {
 async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
+
+    const owner = await prisma.client.findUnique({ where: { id: body.clientId ?? '' }, select: { branchId: true } });
+    if (!owner || !inScope(currentUser(request), owner.branchId)) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
 
     // Calculate PTA (500, 1000, 2000 Hz)
     const calcPta = (air: Record<number, number | null>) => {

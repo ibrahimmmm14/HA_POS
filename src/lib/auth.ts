@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@/lib/db';
+import { requestActor } from '@/lib/requestContext';
 import { SESSION_COOKIE, passwordFingerprint, verifySession } from '@/lib/session';
 import {
   Permission,
@@ -116,6 +117,35 @@ export async function getSessionUser(request: Request): Promise<AuthedUser | nul
 
 type Handler = (request: Request, context: any) => Promise<Response> | Response;
 
+// The signed-in user for each request that passed guarded(), so handlers need no second lookup.
+const usersByRequest = new WeakMap<Request, AuthedUser>();
+
+/** The signed-in user of a request handled by a guarded() route. */
+export function currentUser(request: Request): AuthedUser {
+  const user = usersByRequest.get(request);
+  if (!user) throw new Error('currentUser() called outside a guarded route');
+  return user;
+}
+
+// ─── Branch scope ─────────────────────────────────────────────────────────
+// A system administrator sees every branch. Everyone else only sees the branches assigned to them.
+
+/** Branch ids the user may see, or null for "all branches". */
+export function branchScope(user: AuthedUser): string[] | null {
+  return user.role === 'super_admin' ? null : user.branchIds;
+}
+
+export function inScope(user: AuthedUser, branchId: string | null | undefined): boolean {
+  const scope = branchScope(user);
+  return scope === null || (!!branchId && scope.includes(branchId));
+}
+
+/** Prisma filter on a branch column: `{ branchId: scopeFilter(user) }` — undefined (no filter) for an administrator. */
+export function scopeFilter(user: AuthedUser): { in: string[] } | undefined {
+  const scope = branchScope(user);
+  return scope === null ? undefined : { in: scope };
+}
+
 /**
  * Wrap an API route handler: rejects anyone who is not signed in or lacks the permission
  * that the route needs (see API_RULES in permissions.ts).
@@ -131,9 +161,28 @@ export function guarded<H extends Handler>(handler: H): H {
     if (!satisfies(user.permissions, need)) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
-    return handler(request, context);
+    usersByRequest.set(request, user);
+    // Audit entries written while handling this request are attributed to this user and their branch
+    return requestActor.run(
+      { userId: user.id, userName: user.nameAr, branchId: user.branchIds[0] ?? user.currentBranchId },
+      () => handler(request, context)
+    );
   };
   return wrapped as H;
+}
+
+/**
+ * The branch a new record is filed under: the requested one if the user may use it,
+ * otherwise their first branch. Returns null only if there is no branch at all.
+ */
+export async function resolveBranchId(user: AuthedUser, requested?: unknown): Promise<string | null> {
+  const scope = branchScope(user);
+  if (typeof requested === 'string' && (scope === null || scope.includes(requested))) {
+    const exists = await prisma.branch.findUnique({ where: { id: requested }, select: { id: true } });
+    if (exists) return exists.id;
+  }
+  if (scope && scope.length > 0) return scope[0];
+  return (await prisma.branch.findFirst({ orderBy: { id: 'asc' }, select: { id: true } }))?.id ?? null;
 }
 
 // ─── Sign-in activity log ─────────────────────────────────────────────────

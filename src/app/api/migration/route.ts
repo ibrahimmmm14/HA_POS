@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, resolveBranchId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,10 @@ async function POSTHandler(request: Request) {
     let importedCount = 0;
 
     if (type === 'clients') {
+      // Imported patients are filed under the branch given in the request (default: the user's branch)
+      const branchId = await resolveBranchId(currentUser(request), body.branchId);
+      if (!branchId) return NextResponse.json({ error: 'no_branch' }, { status: 400 });
+
       for (const row of records) {
         if (!row.nameAr && !row.nameEn) continue;
 
@@ -26,6 +30,7 @@ async function POSTHandler(request: Request) {
           data: {
             id,
             fileNo,
+            branchId,
             nationalId: row.nationalId || '',
             nameAr: row.nameAr || row.nameEn || 'عميل مستورد',
             nameEn: row.nameEn || row.nameAr || 'Imported Client',

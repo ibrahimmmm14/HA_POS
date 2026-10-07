@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-async function GETHandler() {
+async function GETHandler(request: Request) {
   try {
     const logs = await prisma.auditLog.findMany({
+      where: { branchId: scopeFilter(currentUser(request)) },
       take: 50,
       orderBy: { timestamp: 'desc' },
     });

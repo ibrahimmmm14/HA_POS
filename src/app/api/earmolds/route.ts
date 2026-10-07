@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,8 +10,10 @@ async function GETHandler(request: Request) {
     const status = searchParams.get('status');
     const clientId = searchParams.get('clientId');
 
+    // A lab order belongs to its patient's branch
     const orders = await prisma.earmoldOrder.findMany({
       where: {
+        client: { branchId: scopeFilter(currentUser(request)) },
         ...(status && status !== 'all' ? { status } : {}),
         ...(clientId ? { clientId } : {}),
       },
@@ -44,6 +46,11 @@ async function GETHandler(request: Request) {
 async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
+
+    const owner = await prisma.client.findUnique({ where: { id: body.clientId ?? '' }, select: { branchId: true } });
+    if (!owner || !inScope(currentUser(request), owner.branchId)) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
 
     const count = await prisma.earmoldOrder.count();
     const orderNo =

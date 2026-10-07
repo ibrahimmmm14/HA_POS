@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-async function GETHandler() {
+async function GETHandler(request: Request) {
   try {
     const [templates, logs] = await Promise.all([
       prisma.messageTemplate.findMany(),
       prisma.messageLog.findMany({
+        where: { client: { branchId: scopeFilter(currentUser(request)) } },
         orderBy: { sentAt: 'desc' },
       }),
     ]);
@@ -26,6 +27,11 @@ async function GETHandler() {
 async function POSTHandler(request: Request) {
   try {
     const body = await request.json();
+
+    const recipient = await prisma.client.findUnique({ where: { id: body.clientId ?? '' }, select: { branchId: true } });
+    if (!recipient || !inScope(currentUser(request), recipient.branchId)) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
 
     const newLog = await prisma.messageLog.create({
       data: {

@@ -32,6 +32,7 @@ model Branch {
   // Relations
   warehouses     Warehouse[]
   serialUnits    SerialUnit[]
+  clients        Client[]
   invoices       Invoice[]
   transfers_from StockTransfer[] @relation("FromBranch")
   transfers_to   StockTransfer[] @relation("ToBranch")
@@ -220,8 +221,10 @@ model Client {
   insurancePolicyNo String?
   notes             String?
   createdAt         String
+  branchId          String
 
   // Relations
+  branch           Branch            @relation(fields: [branchId], references: [id])
   doctor           Doctor?           @relation(fields: [doctorId], references: [id])
   hospital         Hospital?         @relation(fields: [hospitalId], references: [id])
   insuranceCompany InsuranceCompany? @relation(fields: [insuranceId], references: [id])
@@ -231,6 +234,7 @@ model Client {
   invoices         Invoice[]
   messageLogs      MessageLog[]
 
+  @@index([branchId])
   @@map("clients")
 }
 

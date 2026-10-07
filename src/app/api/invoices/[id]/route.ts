@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapInvoice, logAudit } from '@/lib/db';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,8 @@ async function GETHandler(
       },
     });
 
-    if (!invoiceRaw) {
+    // An invoice of another branch looks exactly like one that does not exist
+    if (!invoiceRaw || !inScope(currentUser(request), invoiceRaw.branchId)) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
@@ -52,7 +53,16 @@ async function PUTHandler(
   { params }: { params: { id: string } }
 ) {
   try {
+    const user = currentUser(request);
     const body = await request.json();
+
+    const existing = await prisma.invoice.findUnique({ where: { id: params.id }, select: { branchId: true } });
+    if (!existing || !inScope(user, existing.branchId)) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+    if (body.branchId !== undefined && !inScope(user, body.branchId)) {
+      return NextResponse.json({ error: 'forbidden_branch' }, { status: 403 });
+    }
 
     const {
       id: _id,

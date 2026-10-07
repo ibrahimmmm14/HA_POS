@@ -1,15 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma, mapStockTransfer, mapItem, logAudit } from '@/lib/db';
 import { StockTransfer } from '@/types';
-import { guarded } from '@/lib/auth';
+import { branchScope, currentUser, guarded, inScope } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 type TransferItem = StockTransfer['items'][number];
 
-async function GETHandler() {
+// pending -> in_transit (sent) -> completed (received); either of the first two can be cancelled
+const TRANSITIONS: Record<string, string[]> = {
+  pending: ['in_transit', 'cancelled'],
+  in_transit: ['completed', 'cancelled'],
+};
+
+async function GETHandler(request: Request) {
   try {
+    // A branch sees the transfers it sends and the ones it receives
+    const scope = branchScope(currentUser(request));
     const rawTransfers = await prisma.stockTransfer.findMany({
+      where: scope ? { OR: [{ fromBranchId: { in: scope } }, { toBranchId: { in: scope } }] } : undefined,
       include: {
         fromBranch: { select: { nameAr: true } },
         toBranch: { select: { nameAr: true } },
@@ -39,7 +48,23 @@ async function GETHandler() {
 
 async function POSTHandler(request: Request) {
   try {
+    const user = currentUser(request);
     const body = await request.json();
+
+    // Stock can only be sent from the user's own branch, between warehouses of the right branches
+    if (!inScope(user, body.fromBranchId)) {
+      return NextResponse.json({ error: 'forbidden_branch' }, { status: 403 });
+    }
+    if (body.fromBranchId === body.toBranchId) {
+      return NextResponse.json({ error: 'same_branch' }, { status: 400 });
+    }
+    const [fromWh, toWh] = await Promise.all([
+      prisma.warehouse.findUnique({ where: { id: body.fromWarehouseId ?? '' }, select: { branchId: true } }),
+      prisma.warehouse.findUnique({ where: { id: body.toWarehouseId ?? '' }, select: { branchId: true } }),
+    ]);
+    if (fromWh?.branchId !== body.fromBranchId || toWh?.branchId !== body.toBranchId) {
+      return NextResponse.json({ error: 'warehouse_not_in_branch' }, { status: 400 });
+    }
 
     const count = await prisma.stockTransfer.count();
     const transferNo =
@@ -85,6 +110,7 @@ async function POSTHandler(request: Request) {
 
 async function PUTHandler(request: Request) {
   try {
+    const user = currentUser(request);
     const body = await request.json();
     const { id, status } = body;
 
@@ -92,12 +118,22 @@ async function PUTHandler(request: Request) {
       where: { id },
     });
 
-    if (!prevTransferRaw) {
+    // A transfer that does not involve the user's branches looks like one that does not exist
+    if (!prevTransferRaw || !(inScope(user, prevTransferRaw.fromBranchId) || inScope(user, prevTransferRaw.toBranchId))) {
       return NextResponse.json({ error: 'Transfer not found' }, { status: 404 });
     }
 
     const prevTransfer = mapStockTransfer(prevTransferRaw);
     const prevStatus = prevTransfer.status;
+
+    if (!(TRANSITIONS[prevStatus] ?? []).includes(status)) {
+      return NextResponse.json({ error: 'invalid_transition' }, { status: 409 });
+    }
+    // The sending branch dispatches or cancels; the receiving branch confirms receipt
+    const actingBranch = status === 'completed' ? prevTransfer.toBranchId : prevTransfer.fromBranchId;
+    if (!inScope(user, actingBranch)) {
+      return NextResponse.json({ error: 'forbidden_branch' }, { status: 403 });
+    }
 
     let completedAt = prevTransfer.completedAt;
 

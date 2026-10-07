@@ -12,6 +12,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { requestActor } from '@/lib/requestContext';
 import type {
   Branch,
   Warehouse,
@@ -119,6 +120,22 @@ export function mapStockTransfer(row: any): StockTransfer {
   };
 }
 
+// ─── Invoice numbers ──────────────────────────────────────────────────────
+/**
+ * Next invoice number for this year: one more than the highest existing INV-YYYY-NNNN.
+ * Counting rows is not safe (two routes used different offsets and could issue the same number).
+ */
+export async function nextInvoiceNo(): Promise<string> {
+  const prefix = `INV-${new Date().getFullYear()}-`;
+  const last = await prisma.invoice.findFirst({
+    where: { invoiceNo: { startsWith: prefix } },
+    orderBy: { invoiceNo: 'desc' },
+    select: { invoiceNo: true },
+  });
+  const lastSeq = last ? parseInt(last.invoiceNo.slice(prefix.length), 10) || 0 : 0;
+  return `${prefix}${String(lastSeq + 1).padStart(4, '0')}`;
+}
+
 // ─── Audit Log Helper ─────────────────────────────────────────────────────
 // Drop-in replacement for the old logAudit() from db.ts
 // Keeps API routes unchanged.
@@ -128,10 +145,15 @@ export async function logAudit(
   entityType: string,
   entityId: string,
   details: string,
-  userId = 'usr-01',
-  userName = 'د. طارق العتيبي',
-  branchId = 'br-01'
+  userId?: string,
+  userName?: string,
+  branchId?: string
 ): Promise<void> {
+  // Default to whoever is making the current request; the fixed values are only a last resort
+  const actor = requestActor.getStore();
+  userId = userId ?? actor?.userId ?? 'usr-01';
+  userName = userName ?? actor?.userName ?? 'د. طارق العتيبي';
+  branchId = branchId ?? actor?.branchId ?? 'br-01';
   try {
     await prisma.auditLog.create({
       data: {

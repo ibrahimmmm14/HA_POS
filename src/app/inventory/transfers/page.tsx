@@ -20,7 +20,10 @@ import {
 
 export default function TransfersPage() {
   const { lang, t } = useLanguage();
-  const { branches, warehouses, currentUser } = useBranch();
+  const { branches, selectableBranches, currentBranch, session, warehouses, currentUser } = useBranch();
+
+  // Dispatching is done by the sending branch and receiving by the receiving branch (administrators: either)
+  const mayActFor = (branchId: string) => session?.role === 'super_admin' || !!session?.branchIds.includes(branchId);
 
   const [transfers, setTransfers] = useState<any[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -28,14 +31,28 @@ export default function TransfersPage() {
 
   // New Transfer Modal
   const [showModal, setShowModal] = useState(false);
-  const [fromBranchId, setFromBranchId] = useState('br-01');
-  const [toBranchId, setToBranchId] = useState('br-02');
+  const [fromBranchId, setFromBranchId] = useState('');
+  const [toBranchId, setToBranchId] = useState('');
   const [lines, setLines] = useState<{ item: Item; quantity: number }[]>([]);
   const [scanInput, setScanInput] = useState('');
   const [scanMessage, setScanMessage] = useState('');
   const scanRef = useRef<HTMLInputElement>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Start from the branch selected in the header, towards the first other branch
+  useEffect(() => {
+    if (!currentBranch) return;
+    setFromBranchId((prev) => (selectableBranches.some((b) => b.id === prev) ? prev : currentBranch.id));
+  }, [currentBranch, selectableBranches]);
+
+  useEffect(() => {
+    setToBranchId((prev) =>
+      prev && prev !== fromBranchId && branches.some((b) => b.id === prev)
+        ? prev
+        : branches.find((b) => b.id !== fromBranchId)?.id ?? ''
+    );
+  }, [fromBranchId, branches]);
 
   const fetchTransfers = () => {
     fetch('/api/transfers')
@@ -125,8 +142,12 @@ export default function TransfersPage() {
       return;
     }
 
-    const fromWh = warehouses.find((w) => w.branchId === fromBranchId) || warehouses[0];
-    const toWh = warehouses.find((w) => w.branchId === toBranchId) || warehouses[1];
+    const fromWh = warehouses.find((w) => w.branchId === fromBranchId);
+    const toWh = warehouses.find((w) => w.branchId === toBranchId);
+    if (!fromWh || !toWh) {
+      alert(lang === 'ar' ? 'لا يوجد مستودع لأحد الفرعين' : 'A selected branch has no warehouse');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -262,7 +283,7 @@ export default function TransfersPage() {
                     </span>
                   </td>
                   <td className="p-3 text-center">
-                    {tr.status === 'pending' && (
+                    {tr.status === 'pending' && mayActFor(tr.fromBranchId) && (
                       <button
                         onClick={() => handleUpdateStatus(tr.id, 'in_transit')}
                         className="px-2.5 py-1 text-[11px] bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition"
@@ -270,7 +291,7 @@ export default function TransfersPage() {
                         إرسال وشحن
                       </button>
                     )}
-                    {tr.status === 'in_transit' && (
+                    {tr.status === 'in_transit' && mayActFor(tr.toBranchId) && (
                       <button
                         onClick={() => handleUpdateStatus(tr.id, 'completed')}
                         className="px-2.5 py-1 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition"
@@ -314,7 +335,7 @@ export default function TransfersPage() {
                     onChange={(e) => setFromBranchId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg p-2 bg-white"
                   >
-                    {branches.map((b) => (
+                    {selectableBranches.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.nameAr}
                       </option>
@@ -329,7 +350,7 @@ export default function TransfersPage() {
                     onChange={(e) => setToBranchId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg p-2 bg-white"
                   >
-                    {branches.map((b) => (
+                    {branches.filter((b) => b.id !== fromBranchId).map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.nameAr}
                       </option>

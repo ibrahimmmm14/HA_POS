@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma, logAudit } from '@/lib/db';
 import { canTransition, isRepairStatus, nowStamp, REPAIR_STATUS_LABELS } from '@/lib/repairs';
-import { guarded } from '@/lib/auth';
+import { currentUser, guarded, inScope, scopeFilter } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,14 +18,15 @@ async function GETHandler(
       },
     });
 
-    if (!ticket) {
+    const user = currentUser(request);
+    if (!ticket || !inScope(user, ticket.branchId)) {
       return NextResponse.json({ error: 'Repair ticket not found' }, { status: 404 });
     }
 
     // Earlier repairs of the same physical device, for repeat-fault tracking
     const deviceHistory = ticket.serialNumber
       ? await prisma.repairTicket.findMany({
-          where: { serialNumber: ticket.serialNumber, id: { not: ticket.id } },
+          where: { serialNumber: ticket.serialNumber, id: { not: ticket.id }, branchId: scopeFilter(user) },
           select: { id: true, ticketNo: true, receivedAt: true, issue: true, status: true },
           orderBy: { receivedAt: 'desc' },
         })
@@ -54,7 +55,7 @@ async function PUTHandler(
       where: { id: params.id },
       include: { client: true },
     });
-    if (!prev) {
+    if (!prev || !inScope(currentUser(request), prev.branchId)) {
       return NextResponse.json({ error: 'Repair ticket not found' }, { status: 404 });
     }
 

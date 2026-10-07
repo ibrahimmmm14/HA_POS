@@ -123,7 +123,7 @@ async function main() {
     await prisma.client.upsert({
       where: { id: client.id },
       update: {},
-      create: client,
+      create: { ...client, branchId: client.branchId ?? 'br-01' },
     });
   }
 
